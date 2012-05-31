@@ -35,12 +35,28 @@
 
 #include <linux/serial_core.h>
 
-
+#if 0
 typedef struct {
 	struct uart_port port;
 	int 
-} uart_MVF_port;
+} uart_mvf_port;
+#endif
+struct mvfuart_platform_data {
+	int (*init)(struct platform_device *pdev);
+	void (*exit)(struct platform_device *pdev);
+	unsigned int flags;
+	void (*irda_enable)(int enable);
+	unsigned int irda_inv_rx:1;
+	unsigned int irda_inv_tx:1;
+	unsigned short transceiver_delay;
+	unsigned int dma_req_rx;
+	unsigned int dma_req_tx;
+};
 
+#define MVFUART_HAVE_RTSCTS (1<<0)
+#define MVFUART_IRDA        (1<<1)
+#define MVFUART_USE_DCEDTE  (1<<2)
+#define MVFUART_SDMA        (1<<3)
 
 #define MVF_UART_BDH     0x00   /* UART Bard Rate Registers:High 	   */
 #define MVF_UART_BDL     0x01   /* UART Baud Rate Registers:Low  	   */
@@ -140,3 +156,6 @@ typedef struct {
 #define UART_S2_BRK13   (1<<2)
 #define UART_S2_LBKDE   (1<<1)
 #define UART_S2_RAF     (1<<0)
+
+#endif
+#endif
