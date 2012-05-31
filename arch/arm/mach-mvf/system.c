@@ -1,4 +1,6 @@
 /*
+ * based on arch/arm/mach-mx6/system.c
+ *
  * Copyright (C) 2011-2012 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -30,6 +32,7 @@
 #include "crm_regs.h"
 #include "regs-anadig.h"
 
+#if 0
 #define SCU_CTRL					0x00
 #define SCU_CONFIG					0x04
 #define SCU_CPU_STATUS				0x08
@@ -155,9 +158,11 @@ void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
 	}
 	__raw_writel(ccm_clpcr, MXC_CCM_CLPCR);
 }
+#endif
 
  void arch_idle(void)
 {
+#if 0
 	if (enable_wait_mode) {
 		if ((num_online_cpus() == num_present_cpus())
 			&& mx6_wait_in_iram != NULL) {
@@ -168,9 +173,11 @@ void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
 				cpu_do_idle();
 		}
 	} else
+#endif
 		cpu_do_idle();
 }
 
+#if 0
 static int __mxs_reset_block(void __iomem *hwreg, int just_enable)
 {
 	u32 c;
@@ -265,3 +272,4 @@ int mxs_reset_block(void __iomem *hwreg)
 	return _mxs_reset_block(hwreg, false);
 }
 EXPORT_SYMBOL(mxs_reset_block);
+#endif

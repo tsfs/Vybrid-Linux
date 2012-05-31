@@ -1,4 +1,6 @@
 /*
+ * based on arch/arm/mach-mx6/board-mx6q_arm2.c
+ *
  * Copyright (C) 2011-2012 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -35,7 +37,7 @@
 #include <linux/i2c/pca953x.h>
 #include <linux/ata.h>
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/map.h>
+//#include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
 #include <linux/pmic_external.h>
 #include <linux/pmic_status.h>
@@ -72,13 +74,13 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 
-#include "usb.h"
-#include "devices-imx6q.h"
+//#include "usb.h"
+#include "devices-vf6xx.h"
 #include "crm_regs.h"
-#include "cpu_op-mx6.h"
-#include "board-mx6q_arm2.h"
-#include "board-mx6dl_arm2.h"
+//#include "cpu_op-mvf.h"
+#include "board-twr_vf600.h"
 
+#if 0 //FIXME
 /* GPIO PIN, sort by PORT/BIT */
 #define MX6_ARM2_LDB_BACKLIGHT		IMX_GPIO_NR(1, 9)
 #define MX6_ARM2_ECSPI1_CS0		IMX_GPIO_NR(2, 30)
@@ -336,7 +338,7 @@ static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = {
 	.dma_req_tx = MX6Q_DMA_REQ_UART2_TX,
 };
 
-static inline void mx6_arm2_init_uart(void)
+static inline void twr_vf600_init_uart(void)
 {
 	imx6q_add_imx_uart(3, NULL);
 	imx6q_add_imx_uart(1, &mx6_arm2_uart1_data);
@@ -1233,7 +1235,7 @@ static void imx6_arm2_usbotg_vbus(bool on)
 		gpio_set_value(MX6_ARM2_USB_OTG_PWR, 0);
 }
 
-static void __init mx6_arm2_init_usb(void)
+static void __init twr_vf600_init_usb(void)
 {
 	int ret = 0;
 
@@ -1774,7 +1776,7 @@ static struct platform_device mx6_arm2_audio_device = {
 	.name = "imx-sgtl5000",
 };
 
-static int __init mx6_arm2_init_audio(void)
+static int __init twr_vf600_init_audio(void)
 {
 	struct clk *pll3_pfd, *esai_clk;
 	mxc_register_device(&sab_audio_device, &sab_audio_data);
@@ -1862,12 +1864,14 @@ static struct mxc_dvfs_platform_data arm2_dvfscore_data = {
 	.dncnt_val		= 10,
 	.delay_time		= 80,
 };
+#endif //FIXME
 
-static void __init mx6_arm2_fixup(struct machine_desc *desc, struct tag *tags,
+static void __init twr_vf600_fixup(struct machine_desc *desc, struct tag *tags,
 				   char **cmdline, struct meminfo *mi)
 {
 }
 
+#if 0 //FIXME
 static int __init early_enable_sgtl5000(char *p)
 {
 	sgtl5000_en = 1;
@@ -1929,12 +1933,14 @@ static int __init early_disable_mipi_dsi(char *p)
 }
 
 early_param("disable_mipi_dsi", early_disable_mipi_dsi);
+#endif //FIXME
 
 /*!
  * Board specific initialization.
  */
-static void __init mx6_arm2_init(void)
+static void __init twr_vf600_init(void)
 {
+#if 0 //FIXME
 	int i;
 	int ret;
 
@@ -2029,7 +2035,7 @@ static void __init mx6_arm2_init(void)
 	 */
 
 	gp_reg_id = arm2_dvfscore_data.reg_id;
-	mx6_arm2_init_uart();
+	twr_vf600_init_uart();
 	imx6q_add_mipi_csi2(&mipi_csi2_pdata);
 	imx6q_add_mxc_hdmi_core(&hdmi_core_data);
 
@@ -2090,8 +2096,8 @@ static void __init mx6_arm2_init(void)
 	if (cpu_is_mx6q())
 		imx6q_add_ahci(0, &mx6_arm2_sata_data);
 	imx6q_add_vpu();
-	mx6_arm2_init_usb();
-	mx6_arm2_init_audio();
+	twr_vf600_init_usb();
+	twr_vf600_init_audio();
 	platform_device_register(&arm2_vmmc_reg_devices);
 	mx6_cpu_regulator_init();
 
@@ -2154,27 +2160,32 @@ static void __init mx6_arm2_init(void)
 		mxc_register_device(&max17135_sensor_device, NULL);
 		imx6dl_add_imx_epdc(&epdc_data);
 	}
+#endif
 }
 
-extern void __iomem *twd_base;
-static void __init mx6_timer_init(void)
+//extern void __iomem *twd_base;
+static void __init mvf_timer_init(void)
 {
 	struct clk *uart_clk;
+#if 0 //FIXME
 #ifdef CONFIG_LOCAL_TIMERS
 	twd_base = ioremap(LOCAL_TWD_ADDR, SZ_256);
 	BUG_ON(!twd_base);
 #endif
-	mx6_clocks_init(32768, 24000000, 0, 0);
+#endif
+	mvf_clocks_init(128000, 24000000, 32000, 24000000);
 
+	//FIXME
 	uart_clk = clk_get_sys("imx-uart.0", NULL);
-	early_console_setup(UART4_BASE_ADDR, uart_clk);
+	early_console_setup(MVF_UART0_BASE_ADDR, uart_clk);
 }
 
 static struct sys_timer mxc_timer = {
-	.init   = mx6_timer_init,
+	.init   = mvf_timer_init,
 };
 
-static void __init mx6_arm2_reserve(void)
+#if 0 //FIXME
+static void __init twr_vf600_reserve(void)
 {
 	phys_addr_t phys;
 
@@ -2186,13 +2197,14 @@ static void __init mx6_arm2_reserve(void)
 		imx6_gpu_pdata.reserved_mem_base = phys;
 	}
 }
+#endif
 
-MACHINE_START(MX6Q_ARM2, "Freescale i.MX 6Quad/Solo/DualLite Armadillo2 Board")
-	.boot_params	= MX6_PHYS_OFFSET + 0x100,
-	.fixup		= mx6_arm2_fixup,
-	.map_io		= mx6_map_io,
-	.init_irq	= mx6_init_irq,
-	.init_machine	= mx6_arm2_init,
+MACHINE_START(TWR_VF600, "Freescale MVF TWR-VF600 Board")
+	.boot_params	= MVF_PHYS_OFFSET + 0x100,
+	.fixup		= twr_vf600_fixup,
+	.map_io		= mvf_map_io,
+	.init_irq	= mvf_init_irq,
+	.init_machine	= twr_vf600_init,
 	.timer		= &mxc_timer,
-	.reserve	= mx6_arm2_reserve,
+	//.reserve	= twr_vf600_reserve,
 MACHINE_END

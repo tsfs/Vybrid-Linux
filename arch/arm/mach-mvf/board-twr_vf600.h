@@ -16,9 +16,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <mach/iomux-vfxx.h>
+#include <mach/iomux-vf6xx.h>
 
-static iomux_v3_cfg_t vf6xx_arm2_pads[] = {
+static iomux_vmvf_cfg_t twr_vf6xx_pads[] = {
 	/* primary function */
 	VF6XX_PAD_PAD_0__CCM_RMII_CLKIN,
 	VF6XX_PAD_PAD_1__DEBUG_TCLK,
@@ -122,7 +122,7 @@ static iomux_v3_cfg_t vf6xx_arm2_pads[] = {
 	VF6XX_PAD_PAD_99__NFC_MLC_NF_RB_B,
 	VF6XX_PAD_PAD_100__NFC_MLC_NF_ALE,
 	VF6XX_PAD_PAD_101__NFC_MLC_NF_CLE,
-,
+	/*FIXME VF6XX_PAD_PAD_102__XXX,*/
 	VF6XX_PAD_PAD_103__ADC0_DA_ADC0SE5,
 	VF6XX_PAD_PAD_104__ADC1_DA_ADC1SE5,
 	VF6XX_PAD_PAD_105__TCON0_TCON1,

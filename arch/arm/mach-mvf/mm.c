@@ -28,8 +28,7 @@
 
 #include <mach/hardware.h>
 #include <mach/common.h>
-//#include <mach/iomux-vf.h>
-//#include <asm/hardware/cache-l2x0.h>
+#include <asm/hardware/cache-l2x0.h>
 
 /*!
  * This structure defines the Faraday memory map.
@@ -58,7 +57,9 @@ void __init mvf_map_io(void)
 	mxc_iomux_vmvf_init(MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR));
 	mxc_arch_reset_init(MVF_IO_ADDRESS(MVF_WDOC_A5_BASE_ADDR));
 	mvf_set_cpu_type();
+#if 0
 	mxc_cpu_lp_set(WAIT_CLOCKED);
+#endif
 }
 
 #ifdef CONFIG_CACHE_L2X0
@@ -66,18 +67,18 @@ int mxc_init_l2x0(void)
 {
 	unsigned int val;
 
-	writel(0x132, IO_ADDRESS(L2_BASE_ADDR + L2X0_TAG_LATENCY_CTRL));
-	writel(0x132, IO_ADDRESS(L2_BASE_ADDR + L2X0_DATA_LATENCY_CTRL));
+	writel(0x132, MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_TAG_LATENCY_CTRL));
+	writel(0x132, MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_DATA_LATENCY_CTRL));
 
-	val = readl(IO_ADDRESS(L2_BASE_ADDR + L2X0_PREFETCH_CTRL));
+	val = readl(MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_PREFETCH_CTRL));
 	val |= 0x40800000;
-	writel(val, IO_ADDRESS(L2_BASE_ADDR + L2X0_PREFETCH_CTRL));
-	val = readl(IO_ADDRESS(L2_BASE_ADDR + L2X0_POWER_CTRL));
+	writel(val, MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_PREFETCH_CTRL));
+	val = readl(MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_POWER_CTRL));
 	val |= L2X0_DYNAMIC_CLK_GATING_EN;
 	val |= L2X0_STNDBY_MODE_EN;
-	writel(val, IO_ADDRESS(L2_BASE_ADDR + L2X0_POWER_CTRL));
+	writel(val, MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR + L2X0_POWER_CTRL));
 
-	l2x0_init(IO_ADDRESS(L2_BASE_ADDR), 0x0, ~0x00000000);
+	l2x0_init(MVF_IO_ADDRESS(MVF_CA5_L2C_BASE_ADDR), 0x0, ~0x00000000);
 	return 0;
 }
 

@@ -1,4 +1,6 @@
 /*
+ * based on arch/arm/mach-mx6/bus_freq.c
+ *
  * Copyright (C) 2011 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -92,10 +94,12 @@ struct completion voltage_change_cmpl;
 int low_freq_bus_used(void);
 void set_ddr_freq(int ddr_freq);
 
+#if 0
 extern struct cpu_op *(*get_cpu_op)(int *op);
 extern void __iomem *ccm_base;
 extern void __iomem *databahn_base;
 extern int update_ddr_freq(int ddr_rate);
+#endif
 
 
 struct mutex bus_freq_mutex;
@@ -113,7 +117,7 @@ int set_high_bus_freq(int high_bus_freq)
 	return 0;
 }
 
-void exit_lpapm_mode_mx6q(int high_bus_freq)
+void exit_lpapm_mode_mvf(int high_bus_freq)
 {
 
 }

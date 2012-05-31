@@ -3,6 +3,6 @@
 #
 
 # Object file lists.
-obj-y   := mm.o devices.o irq.o clock.o
+obj-y   := mm.o devices.o irq.o clock.o bus_freq.o system.o
 
-#obj-$(MACH_TWR_VF600) += board-twr_vf600.o
+obj-$(CONFIG_MACH_TWR_VF600) += board-twr_vf600.o

@@ -48,7 +48,7 @@ extern struct regulator *cpu_regulator;
 extern struct cpu_op *(*get_cpu_op)(int *op);
 extern int lp_high_freq;
 extern int lp_med_freq;
-#if 0
+#if 0 //FIXME
 extern int vf6xx_revision(void);
 #endif
 
@@ -1117,13 +1117,11 @@ static unsigned long _clk_audio_video_round_rate(struct clk *clk,
 						unsigned long rate)
 {
 	//FIXME: need TEST_DIV_SEL support?
-	unsigned int div, post_div = 1;
+	unsigned int div;
 	unsigned int mfn, mfd = 1000000;
 	s64 temp64;
 	unsigned int parent_rate = clk_get_rate(clk->parent);
 	unsigned long pre_div_rate;
-	u32 test_div_sel = 2;
-	u32 control3 = 0;
 	unsigned long final_rate;
 
 	if (rate < AUDIO_VIDEO_MIN_CLK_FREQ)
@@ -1196,7 +1194,6 @@ static struct clk pll6_video_main_clk = {
 static unsigned long _clk_pll6_div_get_rate(struct clk *clk)
 {
 	unsigned int div;
-	u32 reg;
 
 	div = (__raw_readl(MXC_CCM_CACRR) &~MXC_CCM_CACRR_PLL6_CLK_DIV) >>
 		MXC_CCM_CACRR_PLL6_CLK_DIV_OFFSET;
@@ -1205,7 +1202,7 @@ static unsigned long _clk_pll6_div_get_rate(struct clk *clk)
 	return clk_get_rate(clk->parent) / div;
 }
 
-static int _clk_pll6_div_set_rate(struct clk *clk)
+static int _clk_pll6_div_set_rate(struct clk *clk, unsigned long rate)
 {
 	u32 reg, div;
 	u32 parent_rate;
@@ -1214,7 +1211,7 @@ static int _clk_pll6_div_set_rate(struct clk *clk)
 	div = parent_rate / rate;
 
 	if (div == 0)
-		div == 1;
+		div = 1;
 	if (((parent_rate / div) != rate) || div > 2)
 		return -1;
 
@@ -1777,7 +1774,7 @@ static struct clk can0_clk[] = {
 
 static int _clk_can1_root_enable(struct clk *clk)
 {
-	u32 req;
+	u32 reg;
 
 	reg = __raw_readl(MXC_CCM_CSCDR2) | MXC_CCM_CSCDR2_CAN1_EN;
 	__raw_writel(reg, MXC_CCM_CSCDR2);
@@ -1807,7 +1804,7 @@ static int _clk_can1_root_set_parent(struct clk *clk, struct clk *parent)
 	return 0;
 }
 
-static struct clk can1_root_clk = {
+static struct clk can1_clk_root = {
 	__INIT_CLK_DEBUG(can1_root_clk)
 	.parent = &ips_bus_clk,
 	.enable = _clk_can1_root_enable,
@@ -1871,7 +1868,7 @@ static int _clk_ftm_enable(struct clk *clk)
 {
 	u32 reg;
 
-	reg = __raw_readl(MXC_CCM_CSCDR1) | (1 << clk->enable_shif);
+	reg = __raw_readl(MXC_CCM_CSCDR1) | (1 << clk->enable_shift);
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 
 	return 0;
@@ -1881,7 +1878,7 @@ static void _clk_ftm_disable(struct clk *clk)
 {
 	u32 reg;
 
-	reg = __raw_readl(MXC_CCM_CSCDR1) & ~(1 << clk->enable_shif);
+	reg = __raw_readl(MXC_CCM_CSCDR1) & ~(1 << clk->enable_shift);
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 }
 
@@ -1910,7 +1907,7 @@ static int _clk_ftm_ext_set_parent(struct clk *clk, struct clk *parent)
 	else
 		return -EINVAL;
 
-	mux = _get_mux(parent, &ckil_clk, &oscl_clk, &osch_clk, &audio_ext_clk);
+	mux = _get_mux(parent, &ckil_clk, &oscl_clk, &osch_clk, &audio_ext);
 	reg = __raw_readl(MXC_CCM_CSCMR2) & ~(0x3 << shift);
 	reg |= mux << shift;
 	__raw_writel(reg, MXC_CCM_CSCMR2);
@@ -1940,7 +1937,7 @@ static int _clk_ftm_fix_set_parent(struct clk *clk, struct clk *parent)
 	else if (parent == &ckil_clk)
 		mux = 1;
 	else
-		return -EINVAL
+		return -EINVAL;
 
 	reg = __raw_readl(MXC_CCM_CSCMR2) & ~(1 << shift);
 	reg |= mux << shift;
@@ -1952,7 +1949,7 @@ static int _clk_ftm_fix_set_parent(struct clk *clk, struct clk *parent)
 static struct clk ftm0_ext_clk = {
 	__INIT_CLK_DEBUG(ftm0_ext_clk)
 	.parent = &ckil_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM0_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM0_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
 	.get_rate = _clk_ftm_ext_get_rate,
@@ -1962,7 +1959,7 @@ static struct clk ftm0_ext_clk = {
 static struct clk ftm1_ext_clk = {
 	__INIT_CLK_DEBUG(ftm1_ext_clk)
 	.parent = &ckil_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM1_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM1_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
 	.get_rate = _clk_ftm_ext_get_rate,
@@ -1972,7 +1969,7 @@ static struct clk ftm1_ext_clk = {
 static struct clk ftm2_ext_clk = {
 	__INIT_CLK_DEBUG(ftm2_ext_clk)
 	.parent = &ckil_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM2_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM2_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
 	.get_rate = _clk_ftm_ext_get_rate,
@@ -1982,7 +1979,7 @@ static struct clk ftm2_ext_clk = {
 static struct clk ftm3_ext_clk = {
 	__INIT_CLK_DEBUG(ftm3_ext_clk)
 	.parent = &ckil_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM3_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM3_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
 	.get_rate = _clk_ftm_ext_get_rate,
@@ -1992,37 +1989,37 @@ static struct clk ftm3_ext_clk = {
 static struct clk ftm0_fix_clk = {
 	__INIT_CLK_DEBUG(ftm0_fix_clk)
 	.parent = &oscl_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM0_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM0_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
-	.set_parent = _clk_ftm0_fix_set_parent,
+	.set_parent = _clk_ftm_fix_set_parent,
 };
 
 static struct clk ftm1_fix_clk = {
 	__INIT_CLK_DEBUG(ftm1_fix_clk)
 	.parent = &oscl_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM1_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM1_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
-	.set_parent = _clk_ftm1_fix_set_parent,
+	.set_parent = _clk_ftm_fix_set_parent,
 };
 
 static struct clk ftm2_fix_clk = {
 	__INIT_CLK_DEBUG(ftm2_fix_clk)
 	.parent = &oscl_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM2_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM2_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
-	.set_parent = _clk_ftm2_fix_set_parent,
+	.set_parent = _clk_ftm_fix_set_parent,
 };
 
 static struct clk ftm3_fix_clk = {
 	__INIT_CLK_DEBUG(ftm3_fix_clk)
 	.parent = &oscl_clk,
-	.enable_shift = MXC_CCM_CSCDR1_FTM3_CLK_EN_OFFSET;
+	.enable_shift = MXC_CCM_CSCDR1_FTM3_CLK_EN_OFFSET,
 	.enable = _clk_ftm_enable,
 	.disable = _clk_ftm_disable,
-	.set_parent = _clk_ftm3_fix_set_parent,
+	.set_parent = _clk_ftm_fix_set_parent,
 };
 
 static int _clk_ftm0_set_parent(struct clk *clk, struct clk *parent)
@@ -2049,7 +2046,7 @@ static int _clk_ftm0_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk ftm0_clk = {
-	__INIT_CLK_DEBUG(ftm0_clk),
+	__INIT_CLK_DEBUG(ftm0_clk)
 	.parent = &ftm0_fix_clk, //FIXME
 	.enable_reg = MXC_CCM_CCGR1,
 	.enable_shift = MXC_CCM_CCGRx_CG8_OFFSET,
@@ -2082,7 +2079,7 @@ static int _clk_ftm1_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk ftm1_clk = {
-	__INIT_CLK_DEBUG(ftm1_clk),
+	__INIT_CLK_DEBUG(ftm1_clk)
 	.parent = &ftm1_fix_clk, //FIXME
 	.enable_reg = MXC_CCM_CCGR1,
 	.enable_shift = MXC_CCM_CCGRx_CG9_OFFSET,
@@ -2115,7 +2112,7 @@ static int _clk_ftm2_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk ftm2_clk = {
-	__INIT_CLK_DEBUG(ftm2_clk),
+	__INIT_CLK_DEBUG(ftm2_clk)
 	.parent = &ftm2_fix_clk, //FIXME
 	.enable_reg = MXC_CCM_CCGR7,
 	.enable_shift = MXC_CCM_CCGRx_CG8_OFFSET,
@@ -2148,7 +2145,7 @@ static int _clk_ftm3_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk ftm3_clk = {
-	__INIT_CLK_DEBUG(ftm3_clk),
+	__INIT_CLK_DEBUG(ftm3_clk)
 	.parent = &ftm3_fix_clk, //FIXME
 	.enable_reg = MXC_CCM_CCGR7,
 	.enable_shift = MXC_CCM_CCGRx_CG9_OFFSET,
@@ -2157,7 +2154,7 @@ static struct clk ftm3_clk = {
 	.set_parent = _clk_ftm3_set_parent,
 };
 
-static int _clk_enet_rmii_enable(truct clk *clk)
+static int _clk_enet_rmii_enable(struct clk *clk)
 {
 	u32 reg;
 
@@ -2189,7 +2186,7 @@ static int _clk_enet_rmii_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk enet_rmii_clk = {
-	__INIT_CLK_DEBUG(enet_rmii_clk),
+	__INIT_CLK_DEBUG(enet_rmii_clk)
 	.parent = &enet_ext,
 	.enable = _clk_enet_rmii_enable,
 	.disable = _clk_enet_rmii_disable,
@@ -2198,11 +2195,11 @@ static struct clk enet_rmii_clk = {
 #endif
 };
 
-static int _clk_enet_ts_enable(truct clk *clk)
+static int _clk_enet_ts_enable(struct clk *clk)
 {
 	u32 reg;
 
-	reg = __raw_readl(MXC_CCM_CSCDR1) | MXC_CCM_CSCDR1_TS_CLK_EN;
+	reg = __raw_readl(MXC_CCM_CSCDR1) | MXC_CCM_CSCDR1_ENET_TS_EN;
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 
 	return 0;
@@ -2212,7 +2209,7 @@ static void _clk_enet_ts_disable(struct clk *clk)
 {
 	u32 reg;
 
-	reg = __raw_readl(MXC_CCM_CSCDR1) & ~MXC_CCM_CSCDR1_TS_CLK_EN;
+	reg = __raw_readl(MXC_CCM_CSCDR1) & ~MXC_CCM_CSCDR1_ENET_TS_EN;
 	__raw_writel(reg, MXC_CCM_CSCDR1);
 }
 
@@ -2246,7 +2243,7 @@ static int _clk_enet_ts_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk enet_ts_clk = {
-	__INIT_CLK_DEBUG(enet_ts_clk),
+	__INIT_CLK_DEBUG(enet_ts_clk)
 	.parent = &enet_ext,
 	.enable = _clk_enet_ts_enable,
 	.disable = _clk_enet_ts_disable,
@@ -2269,7 +2266,7 @@ static int _clk_dcu_enable(struct clk *clk)
 	return 0;
 }
 
-static int _clk_dcu_disable(struct clk *clk)
+static void _clk_dcu_disable(struct clk *clk)
 {
 	u32 reg;
 
@@ -2278,7 +2275,7 @@ static int _clk_dcu_disable(struct clk *clk)
 	__raw_writel(reg, MXC_CCM_CSCDR3);
 }
 
-static unsigned long _clk_dcu_get_rate(struct clk *clk, unsigned long rate)
+static unsigned long _clk_dcu_get_rate(struct clk *clk)
 {
 	u32 reg, div;
 
@@ -2286,11 +2283,9 @@ static unsigned long _clk_dcu_get_rate(struct clk *clk, unsigned long rate)
 	if (clk == &dcu0_clk_root)
 		div = ((reg & ~MXC_CCM_CSCDR3_DCU0_DIV_MASK) >>
 			MXC_CCM_CSCDR3_DCU0_DIV_OFFSET) + 1;
-	else if (clk == &dcu1_clk_root)
+	else
 		div = ((reg & ~MXC_CCM_CSCDR3_DCU1_DIV_MASK) >>
 			MXC_CCM_CSCDR3_DCU1_DIV_OFFSET) + 1;
-	else
-		return -EINVAL;
 
 	return clk_get_rate(clk->parent) / div;
 }
@@ -2315,6 +2310,7 @@ static int _clk_dcu_set_rate(struct clk *clk, unsigned long rate)
 		reg |= (div -1) << MXC_CCM_CSCDR3_DCU1_DIV_OFFSET;
 	} else
 		return -EINVAL;
+
 	__raw_writel(reg, MXC_CCM_CSCDR3);
 
 	return 0;
@@ -2335,13 +2331,14 @@ static int _clk_dcu_set_parent(struct clk *clk, struct clk *parent)
 		reg |= mux << MXC_CCM_CSCMR1_DCU1_CLK_SEL_OFFSET;
 	} else
 		return -EINVAL;
+
 	__raw_writel(reg, MXC_CCM_CSCMR1);
 
 	return 0;
 }
 
 static struct clk dcu0_clk_root = {
-	__INIT_CLK_DEBUG(dcu0_clk_root),
+	__INIT_CLK_DEBUG(dcu0_clk_root)
 	.parent = &pll1_pfd2, //FIXME
 	.enable_shift = MXC_CCM_CSCDR3_DCU0_EN_OFFSET,
 	.enable = _clk_dcu_enable,
@@ -2351,9 +2348,9 @@ static struct clk dcu0_clk_root = {
 	.set_parent = _clk_dcu_set_parent,
 };
 
-static struct dcu0_clk[] = {
+static struct clk dcu0_clk[] = {
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_0),
+	__INIT_CLK_DEBUG(dcu0_clk_0)
 	.id = 0,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2363,7 +2360,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[1],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_1),
+	__INIT_CLK_DEBUG(dcu0_clk_1)
 	.id = 1,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2373,7 +2370,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[2],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_2),
+	__INIT_CLK_DEBUG(dcu0_clk_2)
 	.id = 2,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2383,7 +2380,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[3],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_3),
+	__INIT_CLK_DEBUG(dcu0_clk_3)
 	.id = 3,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2393,7 +2390,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[4],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_4),
+	__INIT_CLK_DEBUG(dcu0_clk_4)
 	.id = 4,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2403,7 +2400,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[5],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_5),
+	__INIT_CLK_DEBUG(dcu0_clk_5)
 	.id = 5,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2413,7 +2410,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[6],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_6),
+	__INIT_CLK_DEBUG(dcu0_clk_6)
 	.id = 6,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2423,7 +2420,7 @@ static struct dcu0_clk[] = {
 	.secondary = &dcu0_clk[7],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu0_clk_7),
+	__INIT_CLK_DEBUG(dcu0_clk_7)
 	.id = 7,
 	.parent = &dcu0_clk_root,
 	.enable_reg = MXC_CCM_CCGR3,
@@ -2431,10 +2428,10 @@ static struct dcu0_clk[] = {
 	.enable = _clk_enable,
 	.disable = _clk_disable,
 	},
-}
+};
 
 static struct clk dcu1_clk_root = {
-	__INIT_CLK_DEBUG(dcu1_clk_root),
+	__INIT_CLK_DEBUG(dcu1_clk_root)
 	.parent = &pll1_pfd2, //FIXME
 	.enable_shift = MXC_CCM_CSCDR3_DCU1_EN_OFFSET,
 	.enable = _clk_dcu_enable,
@@ -2446,7 +2443,7 @@ static struct clk dcu1_clk_root = {
 
 static struct clk dcu1_clk[] = {
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_0),
+	__INIT_CLK_DEBUG(dcu1_clk_0)
 	.id = 0,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2456,7 +2453,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[1],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_1),
+	__INIT_CLK_DEBUG(dcu1_clk_1)
 	.id = 1,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2466,7 +2463,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[2],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_2),
+	__INIT_CLK_DEBUG(dcu1_clk_2)
 	.id = 2,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2476,7 +2473,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[3],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_3),
+	__INIT_CLK_DEBUG(dcu1_clk_3)
 	.id = 3,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2486,7 +2483,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[4],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_4),
+	__INIT_CLK_DEBUG(dcu1_clk_4)
 	.id = 4,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2496,7 +2493,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[5],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_5),
+	__INIT_CLK_DEBUG(dcu1_clk_5)
 	.id = 5,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2506,7 +2503,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[6],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_6),
+	__INIT_CLK_DEBUG(dcu1_clk_6)
 	.id = 6,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2516,7 +2513,7 @@ static struct clk dcu1_clk[] = {
 	.secondary = &dcu1_clk[7],
 	},
 	{
-	__INIT_CLK_DEBUG(dcu1_clk_7),
+	__INIT_CLK_DEBUG(dcu1_clk_7)
 	.id = 7,
 	.parent = &dcu1_clk_root,
 	.enable_reg = MXC_CCM_CCGR9,
@@ -2531,20 +2528,20 @@ static int _clk_video_adc_enable(struct clk *clk)
 	u32 reg;
 
 	reg = __raw_readl(MXC_CCM_CSCDR1) | MXC_CCM_CSCDR1_VADC_EN;
-	_raw_writel(reg, MXC_CCM_CSCDR1);
+	__raw_writel(reg, MXC_CCM_CSCDR1);
 
 	_clk_enable(clk);
 	return 0;
 }
 
-static void _clk_video_adc__disable(struct clk *clk)
+static void _clk_video_adc_disable(struct clk *clk)
 {
 	u32 reg;
 
 	_clk_disable(clk);
 
 	reg = __raw_readl(MXC_CCM_CSCDR1) & ~MXC_CCM_CSCDR1_VADC_EN;
-	_raw_writel(reg, MXC_CCM_CSCDR1);
+	__raw_writel(reg, MXC_CCM_CSCDR1);
 }
 
 static unsigned long _clk_video_adc_get_rate(struct clk *clk)
@@ -2557,7 +2554,7 @@ static unsigned long _clk_video_adc_get_rate(struct clk *clk)
 	return clk_get_rate(clk->parent) / (div + 1);
 }
 
-tatic int _clk_video_adc_set_rate(struct clk *clk, unsigned long rate)
+static int _clk_video_adc_set_rate(struct clk *clk, unsigned long rate)
 {
 	u32 reg, div;
 	u32 parent_rate = clk_get_rate(clk->parent);
@@ -2592,7 +2589,7 @@ static int _clk_video_adc_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk video_adc_clk = {
-	__INIT_CLK_DEBUG(video_adc_clk),
+	__INIT_CLK_DEBUG(video_adc_clk)
 	.parent = &pll6_div_clk, //FIXME
 	.enable_reg = MXC_CCM_CCGR8,
 	.enable_shift = MXC_CCM_CCGRx_CG7_OFFSET,
@@ -2609,7 +2606,7 @@ static unsigned long _clk_video_adc_div2_get_rate(struct clk *clk)
 }
 
 static struct clk video_adc_div2_clk = {
-	__INIT_CLK_DEBUG(video_adc_div2_clk),
+	__INIT_CLK_DEBUG(video_adc_div2_clk)
 	.parent = &video_adc_clk,
 	.get_rate = _clk_video_adc_div2_get_rate,
 };
@@ -2619,7 +2616,7 @@ static int _clk_gpu_enable(struct clk *clk)
 	u32 reg;
 
 	reg = __raw_readl(MXC_CCM_CSCDR2) | MXC_CCM_CSCDR2_GPU_EN;
-	_raw_writel(reg, MXC_CCM_CSCDR2);
+	__raw_writel(reg, MXC_CCM_CSCDR2);
 
 	_clk_enable(clk);
 	return 0;
@@ -2632,7 +2629,7 @@ static void _clk_gpu_disable(struct clk *clk)
 	_clk_disable(clk);
 
 	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_GPU_EN;
-	_raw_writel(reg, MXC_CCM_CSCDR2);
+	__raw_writel(reg, MXC_CCM_CSCDR2);
 }
 
 static int _clk_gpu_set_parent(struct clk *clk, struct clk *parent)
@@ -2640,7 +2637,7 @@ static int _clk_gpu_set_parent(struct clk *clk, struct clk *parent)
 	int mux;
 	u32 reg;
 
-	mux = _get_mux(parent, &pll2_pfd2, &pll3_pfd2, &NULL, NULL);
+	mux = _get_mux(parent, &pll2_pfd2, &pll3_pfd2, NULL, NULL);
 
 	reg = __raw_readl(MXC_CCM_CSCMR1) & ~MXC_CCM_CSCMR1_GPU_CLK_SEL;
 	reg |= mux << MXC_CCM_CSCMR1_GPU_CLK_SEL_OFFSET;
@@ -2651,14 +2648,12 @@ static int _clk_gpu_set_parent(struct clk *clk, struct clk *parent)
 }
 
 static struct clk gpu_clk = {
-	__INIT_CLK_DEBUG(gpu_clk),
+	__INIT_CLK_DEBUG(gpu_clk)
 	.parent = &pll2_pfd2, //FIXME
 	.enable_reg = MXC_CCM_CCGR8,
 	.enable_shift = MXC_CCM_CCGRx_CG15_OFFSET,
 	.enable = _clk_gpu_enable,
 	.disable = _clk_gpu_disable,
-	.get_rate = _clk_gpu_get_rate,
-	.set_rate = _clk_gpu_set_rate,
 	.set_parent = _clk_gpu_set_parent,
 };
 
@@ -3009,7 +3004,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG8_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[1],
+	.secondary = &eth_l2_sw_clk[1],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_1_clk)
@@ -3019,7 +3014,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG9_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[2],
+	.secondary = &eth_l2_sw_clk[2],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_2_clk)
@@ -3029,7 +3024,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG10_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[3],
+	.secondary = &eth_l2_sw_clk[3],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_3_clk)
@@ -3039,7 +3034,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG11_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[4],
+	.secondary = &eth_l2_sw_clk[4],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_4_clk)
@@ -3049,7 +3044,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG12_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[5],
+	.secondary = &eth_l2_sw_clk[5],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_5_clk)
@@ -3059,7 +3054,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG13_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[6],
+	.secondary = &eth_l2_sw_clk[6],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_6_clk)
@@ -3069,7 +3064,7 @@ static struct clk eth_l2_sw_clk[] = {
 	.enable_shift = MXC_CCM_CCGRx_CG14_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
-	.secondary = eth_l2_sw_clk[7],
+	.secondary = &eth_l2_sw_clk[7],
 	},
 	{
 	__INIT_CLK_DEBUG(eth_l2_sw_7_clk)
@@ -3272,7 +3267,7 @@ static void clk_tree_init(void)
 		break;
 	}
 
-	mux = (__raw_readl(MXC_CCM_CCSR) & MXC_CCM_CCSR_CA5_CLK_SEL_MASK)
+	mux = (__raw_readl(MXC_CCM_CCSR) & MXC_CCM_CCSR_CA5_CLK_SEL)
 		>> MXC_CCM_CCSR_CA5_CLK_SEL_OFFSET;
 	switch (mux) {
 	case 0:
@@ -3385,8 +3380,6 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 	pll_480_usb2_main_clk.disable(&pll_480_usb2_main_clk);
 	pll5_enet_main_clk.disable(&pll5_enet_main_clk);
 
-	sata_clk[0].disable(&sata_clk[0]);
-	pcie_clk[0].disable(&pcie_clk[0]);
 
 	/* Initialize Audio and Video PLLs to valid frequency (650MHz). */
 	clk_set_rate(&pll4_audio_main_clk, 650000000);
@@ -3431,7 +3424,7 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 		     3 << MXC_CCM_CCPGRx_PPCG12_OFFSET |
 		     3 << MXC_CCM_CCPGRx_PPCG14_OFFSET,
 		     MXC_CCM_CCPGR2);
-	__raw_writel(3 << MXC_CCM_CCPGRx_PPCG0_OFFSET,
+	__raw_writel(3 << MXC_CCM_CCPGRx_PPCG0_OFFSET |
 		     3 << MXC_CCM_CCPGRx_PPCG1_OFFSET |
 		     3 << MXC_CCM_CCPGRx_PPCG2_OFFSET |
 		     3 << MXC_CCM_CCPGRx_PPCG3_OFFSET |
@@ -3573,8 +3566,10 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 		     3 << MXC_CCM_CCGRx_CG8_OFFSET,
 		     MXC_CCM_CCGR11);
 
+#if 0 //FIXME
 	base = ioremap(MVF_PIT_BASE_ADDR, SZ_4K);
-	mxc_timer_init(&pit_clk, base, MXC_INT_PIT);
+	mvf_timer_init(&pit_clk, base, MXC_INT_PIT);
+#endif
 
 	lp_high_freq = 0;
 	lp_med_freq = 0;

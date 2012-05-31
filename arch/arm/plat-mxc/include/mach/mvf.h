@@ -387,6 +387,7 @@
 #define MXC_INT_GPIOE			153
 #define MXC_INT_END			153
 
+#define IRQ_GLOBALTIMER			27
 #define IRQ_LOCALTIMER			29
 
 /*
