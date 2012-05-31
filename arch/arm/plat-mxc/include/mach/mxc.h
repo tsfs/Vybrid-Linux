@@ -38,6 +38,7 @@
 #define MXC_CPU_MX53		53
 #define MXC_CPU_MX6Q		63
 #define MXC_CPU_MX6DL		61
+#define MXC_CPU_VF6XX		81 //FIXME
 
 #define IMX_CHIP_REVISION_1_0		0x10
 #define IMX_CHIP_REVISION_1_1		0x11
@@ -102,6 +103,12 @@ extern unsigned int system_rev;
 	board_is_rev(IMX_BOARD_REV_3)
 #define board_is_mx6_revc() \
 	board_is_rev(IMX_BOARD_REV_4)
+#endif
+
+//FIXME: boad_rev need to match with u-boot.
+#ifdef CONFIG_SOC_VF6XX
+#define board_is_twr_vf600() (cpu_is_vf6xx() && \
+	board_is_rev(IMX_BOARD_REV_1))
 #endif
 
 #ifndef __ASSEMBLY__
@@ -244,6 +251,23 @@ extern unsigned int __mxc_cpu_type;
 extern int mx6q_revision(void);
 #else
 #define mx6q_revision(void)    (0)
+#endif
+
+#ifdef CONFIG_SOC_VF6XX
+#  define mxc_cpu_type __mxc_cpu_type
+# define cpu_is_vf6xx()		(mxc_cpu_type == MXC_CPU_VF6XX)
+#else
+# define cpu_is_vf6xx()		(0)
+#endif
+
+#if 0 //FIXME
+#ifndef __ASSEMBLY__
+#ifdef CONFIG_SOC_VF6XX
+extern int vf6xx_revision(void);
+#else
+#define vf6xx_revision(void)    (0)
+#endif
+#endif
 #endif
 
 struct cpu_op {

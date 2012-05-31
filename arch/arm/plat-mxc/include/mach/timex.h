@@ -28,6 +28,8 @@
 #define CLOCK_TICK_RATE		8000000
 #elif defined CONFIG_ARCH_MX6
 #define CLOCK_TICK_RATE		8000000
+#elif defined CONFIG_ARCH_MVF
+#define CLOCK_TICK_RATE		8000000	//FIXME
 #endif
 
 #endif				/* __ASM_ARCH_MXC_TIMEX_H__ */

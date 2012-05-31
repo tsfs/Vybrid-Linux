@@ -131,6 +131,10 @@
 # include <mach/mx25.h>
 #endif
 
+#ifdef CONFIG_ARCH_MVF
+# include <mach/mvf.h>
+#endif
+
 #define imx_map_entry(soc, name, _type)	{				\
 	.virtual = soc ## _IO_P2V(soc ## _ ## name ## _BASE_ADDR),	\
 	.pfn = __phys_to_pfn(soc ## _ ## name ## _BASE_ADDR),		\
