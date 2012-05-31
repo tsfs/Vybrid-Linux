@@ -1,4 +1,6 @@
 /*
+ * based on arch/arm/mach-mx6/mx6_fec.c
+ *
  * Copyright (C) 2011 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,7 +25,7 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include "devices-imx6q.h"
+#include "devices-mvf.h"
 
 #define HW_OCOTP_MACn(n)        (0x00000620 + (n) * 0x10)
 

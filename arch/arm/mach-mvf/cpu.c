@@ -1,4 +1,6 @@
 /*
+ * based on arch/arm/mach-mx6/cpu.c
+ *
  * Copyright (C) 2011-2012 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,17 +31,17 @@
 #include <asm/mach/map.h>
 
 #include "crm_regs.h"
-#include "cpu_op-mx6.h"
+#include "cpu_op-mvf.h"
 
 
-void *mx6_wait_in_iram_base;
-void (*mx6_wait_in_iram)(void);
-extern void mx6_wait(void);
+void *mvf_wait_in_iram_base;
+void (*mvf_wait_in_iram)(void);
+extern void mvf_wait(void);
 
 
 struct cpu_op *(*get_cpu_op)(int *op);
 bool enable_wait_mode;
-u32 arm_max_freq = CPU_AT_1GHz;
+u32 arm_max_freq = CPU_AT_450MHz;
 
 void __iomem *gpc_base;
 void __iomem *ccm_base;
@@ -47,9 +49,9 @@ void __iomem *ccm_base;
 static int cpu_silicon_rev = -1;
 #define SI_REV_OFFSET 	0x48
 
-static int get_mx6q_srev(void)
+static int get_vf6xx_srev(void)
 {
-	void __iomem *romcp = ioremap(BOOT_ROM_BASE_ADDR, SZ_8K);
+	void __iomem *romcp = ioremap(IROM_BASE_ADDR, SZ_8K);
 	u32 rev;
 
 	if (!romcp) {
@@ -61,12 +63,19 @@ static int get_mx6q_srev(void)
 	rev &= 0xff;
 
 	iounmap(romcp);
-	if (rev == 0x10)
-		return IMX_CHIP_REVISION_1_0;
-	else if (rev == 0x11)
-		return IMX_CHIP_REVISION_1_1;
-	else if (rev == 0x20)
-		return IMX_CHIP_REVISION_2_0;
+	switch (rev) {
+	case 0x02:
+		cpu_silicon_rev = CHIP_REV_1_1;
+		break;
+	case 0x10:
+		break;
+	case 0x20:
+		cpu_silicon_rev = CHIP_REV_3_0;
+		break;
+	default:
+		cpu_silicon_rev = CHIP_REV_1_0;
+		break;
+	}
 	return 0;
 }
 
@@ -75,17 +84,17 @@ static int get_mx6q_srev(void)
  *	the silicon revision of the cpu
  *	-EINVAL - not a mx50
  */
-int mx6q_revision(void)
+int vf6xx_revision(void)
 {
-	if (!cpu_is_mx6q())
+	if (!cpu_is_vf6xx())
 		return -EINVAL;
 
 	if (cpu_silicon_rev == -1)
-		cpu_silicon_rev = get_mx6q_srev();
+		cpu_silicon_rev = get_vf6xx_srev();
 
 	return cpu_silicon_rev;
 }
-EXPORT_SYMBOL(mx6q_revision);
+EXPORT_SYMBOL(vf6xx_revision);
 
 static int __init post_cpu_init(void)
 {
@@ -94,46 +103,72 @@ static int __init post_cpu_init(void)
 	unsigned long iram_paddr, cpaddr;
 
 
-	iram_init(MX6Q_IRAM_BASE_ADDR, MX6Q_IRAM_SIZE);
+	iram_init(MVF_IRAM0_BASE_ADDR, MVF_IRAM0_SIZE);	//FIXME
 
-	base = ioremap(AIPS1_ON_BASE_ADDR, PAGE_SIZE);
+	base = ioremap(AIPS0_ON_BASE_ADDR, PAGE_SIZE);
+	__raw_writel(0x0, base + 0x20);
+	__raw_writel(0x0, base + 0x24);
+	__raw_writel(0x0, base + 0x28);
+	__raw_writel(0x0, base + 0x2C);
 	__raw_writel(0x0, base + 0x40);
 	__raw_writel(0x0, base + 0x44);
 	__raw_writel(0x0, base + 0x48);
 	__raw_writel(0x0, base + 0x4C);
-	reg = __raw_readl(base + 0x50) & 0x00FFFFFF;
-	__raw_writel(reg, base + 0x50);
+	__raw_writel(0x0, base + 0x50);
+	__raw_writel(0x0, base + 0x54);
+	__raw_writel(0x0, base + 0x58);
+	__raw_writel(0x0, base + 0x5C);
+	__raw_writel(0x0, base + 0x60);
+	__raw_writel(0x0, base + 0x64);
+	__raw_writel(0x0, base + 0x68);
+	__raw_writel(0x0, base + 0x6C);
+	reg = __raw_readl(base + 0x80) & 0x00FFFFFF;
+	__raw_writel(reg, base + 0x80);
 	iounmap(base);
 
 	base = ioremap(AIPS2_ON_BASE_ADDR, PAGE_SIZE);
+	__raw_writel(0x0, base + 0x20);
+	__raw_writel(0x0, base + 0x24);
+	__raw_writel(0x0, base + 0x28);
+	__raw_writel(0x0, base + 0x2C);
 	__raw_writel(0x0, base + 0x40);
 	__raw_writel(0x0, base + 0x44);
 	__raw_writel(0x0, base + 0x48);
 	__raw_writel(0x0, base + 0x4C);
-	reg = __raw_readl(base + 0x50) & 0x00FFFFFF;
-	__raw_writel(reg, base + 0x50);
+	__raw_writel(0x0, base + 0x50);
+	__raw_writel(0x0, base + 0x54);
+	__raw_writel(0x0, base + 0x58);
+	__raw_writel(0x0, base + 0x5C);
+	__raw_writel(0x0, base + 0x60);
+	__raw_writel(0x0, base + 0x64);
+	__raw_writel(0x0, base + 0x68);
+	__raw_writel(0x0, base + 0x6C);
+	reg = __raw_readl(base + 0x80) & 0x00FFFFFF;
+	__raw_writel(reg, base + 0x80);
 	iounmap(base);
 
 	if (enable_wait_mode) {
 		/* Allow SCU_CLK to be disabled when all cores are in WFI*/
-		base = IO_ADDRESS(SCU_BASE_ADDR);
+		base = MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR);
 		reg = __raw_readl(base);
 		reg |= 0x20;
 		__raw_writel(reg, base);
 	}
 
+#if 0 //FIXME
 	/* Disable SRC warm reset to work aound system reboot issue */
-	base = IO_ADDRESS(SRC_BASE_ADDR);
+	base = MVF_IO_ADDRESS(MVF_ASRC_BASE_ADDR);
 	reg = __raw_readl(base);
 	reg &= ~0x1;
 	__raw_writel(reg, base);
+#endif
 
 	/* Allocate IRAM for WAIT code. */
 	/* Move wait routine into iRAM */
 	cpaddr = (unsigned long)iram_alloc(SZ_4K, &iram_paddr);
 	/* Need to remap the area here since we want the memory region
 		 to be executable. */
-	mx6_wait_in_iram_base = __arm_ioremap(iram_paddr, SZ_4K,
+	mvf_wait_in_iram_base = __arm_ioremap(iram_paddr, SZ_4K,
 					  MT_MEMORY_NONCACHED);
 	pr_info("cpaddr = %x wait_iram_base=%x\n",
 		(unsigned int)cpaddr, (unsigned int)mx6_wait_in_iram_base);
@@ -142,11 +177,11 @@ static int __init post_cpu_init(void)
 	 * Need to run the suspend code from IRAM as the DDR needs
 	 * to be put into low power mode manually.
 	 */
-	memcpy((void *)cpaddr, mx6_wait, SZ_4K);
-	mx6_wait_in_iram = (void *)mx6_wait_in_iram_base;
+	memcpy((void *)cpaddr, mvf_wait, SZ_4K);
+	mvf_wait_in_iram = (void *)mvf_wait_in_iram_base;
 
-	gpc_base = MX6_IO_ADDRESS(GPC_BASE_ADDR);
-	ccm_base = MX6_IO_ADDRESS(CCM_BASE_ADDR);
+	gpc_base = MVF_IO_ADDRESS(MVF_GPC_BASE_ADDR);
+	ccm_base = MX6_IO_ADDRESS(MVF_CCM_BASE_ADDR);
 
 	return 0;
 }
@@ -167,14 +202,8 @@ early_param("enable_wait_mode", enable_wait);
 
 static int __init arm_core_max(char *p)
 {
-	if (memcmp(p, "1200", 4) == 0) {
-		arm_max_freq = CPU_AT_1_2GHz;
-		p += 4;
-	} else if (memcmp(p, "1000", 4) == 0) {
-		arm_max_freq = CPU_AT_1GHz;
-		p += 4;
-	} else if (memcmp(p, "800", 3) == 0) {
-		arm_max_freq = CPU_AT_800MHz;
+	if (memcmp(p, "450", 3) == 0) {
+		arm_max_freq = CPU_AT_1_450MHz;
 		p += 3;
 	}
 	return 0;

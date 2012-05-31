@@ -1,6 +1,12 @@
 /*
  * based on arch/arm/mach-mx6/cpu_op-mx6.c
- *
+ */
+
+/*
+ * Copyright (C) 2010-2012 Freescale Semiconductor, Inc. All Rights Reserved.
+ */
+
+/*
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
  * Version 2 or later at the following locations:
@@ -27,18 +33,6 @@ static struct cpu_op mvf_cpu_op[] = { //FIXME
 	 .cpu_rate = 452000000,
 	 .cpu_podf = 0,
 	 .cpu_voltage = 1100000,},
-#if 0
-	 {
-	  .pll_rate = 792000000,
-	  .cpu_rate = 396000000,
-	  .cpu_podf = 1,
-	  .cpu_voltage = 950000,},
-	{
-	 .pll_rate = 792000000,
-	 .cpu_rate = 198000000,
-	 .cpu_podf = 3,
-	 .cpu_voltage = 850000,},
-#endif
 };
 
 #if 0 //FIXME: need dvfs support ?
