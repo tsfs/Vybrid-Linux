@@ -37,7 +37,6 @@
  *
  */
 
-static struct mxc_gpio_port *mxc_gpio_ports;
 static int gpio_table_size;
 
 /* GPIO Num TO IOMUX Address
@@ -104,7 +103,7 @@ static unsigned char gpio_to_mux[] = {
 };
 #define IOMUX_OFF(x) gpio_to_mux[x]
 
-
+static struct mvf_gpio_port *mvf_gpio_ports;
 /*
  * IRQ Setting: Initialize PORTx_PCRn ( see Chapter 6)
  */
@@ -137,8 +136,8 @@ static unsigned char gpio_to_mux[] = {
 
 static void _clear_gpio_irqstatus(struct mvf_gpio_port *port, u32 index)
 {
-	void __iomem *adr = port->pbase | PORT_PCR(index);
-	__raw_writel(__raw_readl(adr) | PORT_PCR_ISF, port->pbase + adr);
+	void __iomem *adr = (void __iomem *)((u32)(port->pbase) | PORT_PCR(index));
+	__raw_writel(__raw_readl(adr) | PORT_PCR_ISF, adr);
 }
 
 static void _set_gpio_irqenable(struct mvf_gpio_port *port, u32 index,
@@ -146,9 +145,10 @@ static void _set_gpio_irqenable(struct mvf_gpio_port *port, u32 index,
 {
 	u32 l;
 
-	l = __raw_readl(port->base + GPIO_IMR);
-	l = (l & (~(1 << index))) | (!!enable << index);
-	__raw_writel(l, port->base + GPIO_IMR);
+	l = __raw_readl((u32)port->pbase + PORT_PCR(index));
+	l &= PCR_IRQC_MASK;
+	l = enable?port->int_type:PCR_IRQC_NONE;
+	__raw_writel(l, (u32)port->pbase + PORT_PCR(index));
 }
 
 static void gpio_ack_irq(struct irq_data *d)
@@ -175,7 +175,7 @@ static int gpio_set_irq_type(struct irq_data *d, u32 type)
 {
 	u32 gpio = irq_to_gpio(d->irq);
 	struct mvf_gpio_port *port = &mvf_gpio_ports[gpio / 32];
-	u32 bit, val;
+	u32 val;
 	int edge;
 	void __iomem *reg = port->pbase;
 
@@ -199,10 +199,11 @@ static int gpio_set_irq_type(struct irq_data *d, u32 type)
 	default:
 		return -EINVAL;
 	}
-
-	reg |= PORT_PCR(gpio%32)
-	val = __raw_readl(reg) & PCR_IRQC_MASK);
-	__raw_writel(val | (edge <<16)), reg);
+	
+	reg = (void __iomem *)((u32)reg | PORT_PCR(gpio%32));
+	val = __raw_readl(reg) & PCR_IRQC_MASK;
+	port->int_type = edge;
+	__raw_writel(val | (edge <<16), reg);
 	_clear_gpio_irqstatus(port, gpio & 0x1f);
 
 	return 0;
@@ -222,8 +223,7 @@ static void mvf_gpio_irq_handler(struct mvf_gpio_port *port, u32 irq_stat)
 	}
 }
 
-/* MX1 and MX3 has one interrupt *per* gpio port */
-static void mx3_gpio_irq_handler(u32 irq, struct irq_desc *desc)
+static void mvf_gpio_irq_chain_handler(u32 irq, struct irq_desc *desc)
 {
 	u32 irq_stat;
 	struct mvf_gpio_port *port = irq_get_handler_data(irq);
@@ -231,31 +231,12 @@ static void mx3_gpio_irq_handler(u32 irq, struct irq_desc *desc)
 
 	chained_irq_enter(chip, desc);
 
-	irq_stat = __raw_readl(port->base + GPIO_ISR) &
-			__raw_readl(port->base + GPIO_IMR);
+	irq_stat = __raw_readl((void __iomem *)((u32)(port->pbase) + PORT_ISFR));
 
 	mvf_gpio_irq_handler(port, irq_stat);
 
-	chained_irq_exit(chip, desc);
-}
+	chained_irq_exit(chip, desc);	
 
-/* MX2 has one interrupt *for all* gpio ports */
-static void mx2_gpio_irq_handler(u32 irq, struct irq_desc *desc)
-{
-	int i;
-	u32 irq_msk, irq_stat;
-	struct mvf_gpio_port *port = irq_get_handler_data(irq);
-
-	/* walk through all interrupt status registers */
-	for (i = 0; i < gpio_table_size; i++) {
-		irq_msk = __raw_readl(port[i].base + GPIO_IMR);
-		if (!irq_msk)
-			continue;
-
-		irq_stat = __raw_readl(port[i].base + GPIO_ISR) & irq_msk;
-		if (irq_stat)
-			mvf_gpio_irq_handler(&port[i], irq_stat);
-	}
 }
 
 /*
@@ -270,7 +251,6 @@ static void mx2_gpio_irq_handler(u32 irq, struct irq_desc *desc)
 static int gpio_set_wake_irq(struct irq_data *d, u32 enable)
 {
 	u32 gpio = irq_to_gpio(d->irq);
-	u32 gpio_idx = gpio & 0x1F;
 	struct mvf_gpio_port *port = &mvf_gpio_ports[gpio / 32];
 
 	if (enable) {
@@ -316,7 +296,7 @@ static void mvf_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	struct mvf_gpio_port *port =
 		container_of(chip, struct mvf_gpio_port, chip);
 
-	void __iomem *reg = port->base + GPIO_PDOR;
+	void __iomem *reg = (void __iomem *)((u32)(port->gbase) + GPIO_PDOR);
 	u32 l;
 	unsigned long flags;
 
@@ -331,7 +311,7 @@ static int mvf_gpio_get(struct gpio_chip *chip, unsigned offset)
 	struct mvf_gpio_port *port =
 		container_of(chip, struct mvf_gpio_port, chip);
 
-	return (__raw_readl(port->base + GPIO_PSR) >> offset) & 1;
+	return (__raw_readl((u32)(port->gbase) + GPIO_PSOR) >> offset) & 1;
 }
 
 static int mvf_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
@@ -367,8 +347,7 @@ int mvf_gpio_init(struct mvf_gpio_port *port, int cnt)
 
 	for (i = 0; i < cnt; i++) {
 		/* disable the interrupt and clear the status */
-		for ( j = 0;j <32;j++)
-			__raw_writel(~0, port[i].pbase + GPIO_ISR+(i<<2));
+		__raw_writel(~0, port[i].pbase + PORT_ISFR);
 		for (j = port[i].virtual_irq_start;
 			j < port[i].virtual_irq_start + 32; j++) {
 			irq_set_lockdep_class(j, &gpio_lock_class);
@@ -393,7 +372,7 @@ int mvf_gpio_init(struct mvf_gpio_port *port, int cnt)
 
 		/* setup one handler for each entry */
 		irq_set_chained_handler(port[i].irq,
-								mx3_gpio_irq_handler);
+								mvf_gpio_irq_chain_handler);
 		irq_set_handler_data(port[i].irq, &port[i]);
 	}
 	initialed = true;

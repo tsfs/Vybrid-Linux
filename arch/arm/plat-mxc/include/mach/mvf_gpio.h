@@ -44,6 +44,7 @@ struct mvf_gpio_port {
 	void __iomem *ibase;   /* IOMUX Register Base Address */
 	                       /* IOMUX USE For Direction */
 	int irq;
+	int int_type;
 	int virtual_irq_start;
 	struct gpio_chip chip;
 	u32 both_edges;
