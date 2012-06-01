@@ -72,11 +72,11 @@ int mvf_gpio_init(struct mvf_gpio_port*, int);
 #define GPIO_NUM(x,y)  (((x)-1)<<8 | (y))
 #define GPIO(x,y)  _PORT_PCR(x,y)<<16 | GPIO_ADDR(x,y)
 
-#define PORT_A   1
-#define PORT_B   2
-#define PORT_C   3
-#define PORT_D   4
-#define PORT_E   5
+#define PORT_0   1
+#define PORT_1   2
+#define PORT_2   3
+#define PORT_3   4
+#define PORT_4   5
 
 #define GPIO_PDOR   0x00
 #define GPIO_PSOR   0x04
