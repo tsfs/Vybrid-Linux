@@ -2932,7 +2932,15 @@ static struct clk dma_mux3_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: OTP CTRL */
+static struct clk ocotp_clk = {
+	__INIT_CLK_DEBUG(ocotp_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR6,
+	.enable_shift = MXC_CCM_CCGRx_CG5_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
 
 static struct clk uart4_clk = {
 	__INIT_CLK_DEBUG(uart4_clk)
@@ -3141,7 +3149,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "ftm1_clk", ftm1_clk),
 	_REGISTER_CLOCK(NULL, "ftm2_clk", ftm2_clk),
 	_REGISTER_CLOCK(NULL, "ftm3_clk", ftm3_clk),
-#if 0
+#if 1
 	_REGISTER_CLOCK(NULL, "fec_clk", enet_clk), //FIXME
 #else
 	_REGISTER_CLOCK("fec.0", NULL, enet_clk), //FIXME
@@ -3185,6 +3193,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "src_clk", src_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix2_clk", dma_mux2_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix3_clk", dma_mux3_clk),
+	_REGISTER_CLOCK(NULL, "ocotp_clk", ocotp_clk),
 	_REGISTER_CLOCK("imx-uart.4", NULL, uart4_clk),
 	_REGISTER_CLOCK("imx-uart.5", NULL, uart5_clk),
 	_REGISTER_CLOCK(NULL, "tcon1_clk", tcon1_clk),

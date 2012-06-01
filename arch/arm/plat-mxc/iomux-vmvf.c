@@ -64,6 +64,21 @@ int mxc_iomux_vmvf_setup_multiple_pads(iomux_vmvf_cfg_t *pad_list, unsigned coun
 }
 EXPORT_SYMBOL(mxc_iomux_vmvf_setup_multiple_pads);
 
+void mxc_iomux_set_gpr_register(int group, int start_bit, int num_bits, int value)
+{
+	int i = 0;
+	u32 reg;
+	reg = __raw_readl(base + group * 4);
+	while (num_bits) {
+		reg &= ~(1<<(start_bit + i));
+		i++;
+		num_bits--;
+	}
+	reg |= (value << start_bit);
+	__raw_writel(reg, base + group * 4);
+}
+EXPORT_SYMBOL(mxc_iomux_set_gpr_register);
+
 void mxc_iomux_vmvf_init(void __iomem *iomux_vmvf_base)
 {
 	base = iomux_vmvf_base;

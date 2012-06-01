@@ -54,6 +54,11 @@ const struct imx_fec_data imx6q_fec_data __initconst =
 	imx_fec_data_entry_single(MX6Q);
 #endif
 
+#ifdef CONFIG_SOC_VF6XX
+const struct imx_fec_data vf6xx_fec_data __initconst =
+	imx_fec_data_entry_single(VF6XX);
+#endif
+
 struct platform_device *__init imx_add_fec(
 		const struct imx_fec_data *data,
 		const struct fec_platform_data *pdata)
