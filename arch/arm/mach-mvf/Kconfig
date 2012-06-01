@@ -61,6 +61,27 @@ config MACH_TWR_VF600
 
 comment "MVF Options:"
 
+menu "IOMUX Setting"
+
+choice
+	prompt "TWR-VF600 IOMUX Setting"
+	default IOMUX_PRIMARY
+	depends on MACH_TWR_VF600
+
+config IOMUX_PRIMARY
+	bool "Primary"
+	help
+	  Setup IOMUX as Primary Function
+
+config IOMUX_SECONDARY
+	bool "Secondary"
+	help
+	  Setup IOMUX as Secondary Function
+
+endchoice
+
+endmenu
+
 config IMX_PCIE
 	bool "PCI Express support"
 	select PCI

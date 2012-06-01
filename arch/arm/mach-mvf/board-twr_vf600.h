@@ -19,6 +19,7 @@
 #include <mach/iomux-vf6xx.h>
 
 static iomux_vmvf_cfg_t twr_vf6xx_pads[] = {
+#if defined(CONFIG_IOMUX_PRIMARY)
 	/* primary function */
 	VF6XX_PAD_PAD_0__CCM_RMII_CLKIN,
 	VF6XX_PAD_PAD_1__DEBUG_TCLK,
@@ -155,6 +156,9 @@ static iomux_vmvf_cfg_t twr_vf6xx_pads[] = {
 	VF6XX_PAD_PAD_132__TCON0_DATA_OUT8,
 	VF6XX_PAD_PAD_133__TCON0_DATA_OUT9,
 	VF6XX_PAD_PAD_134__RGPIOC_GPIO134
+#elif defined(CONFIG_IOMUX_SECONDARY)
+	/* Secondary function */
 
+#endif
 };
 
