@@ -53,6 +53,8 @@
 #include <linux/serial_core.h>
 #include <linux/serial_reg.h>
 #include <linux/clk.h>
+#include <linux/platform_device.h>
+
 #include <mach/mvf_uart.h>
 
 struct mvf_early_uart_device {
@@ -63,9 +65,10 @@ struct mvf_early_uart_device {
 };
 static struct mvf_early_uart_device mvf_early_device __initdata;
 
+#if 0
 static inline int mvf_uart_enable(struct mvf_port *sport)
 {
-	unsinged char c2;
+	unsigned char c2;
 	c2 = readb(sport->port.membase + MVF_UART_C2);
 	c2 |= (UART_C2_TE | UART_C2_RE);
 	writeb(c2, sport->port.membase + MVF_UART_C2);
@@ -73,23 +76,22 @@ static inline int mvf_uart_enable(struct mvf_port *sport)
 }
 static inline int mvf_uart_disable(struct mvf_port *sport)
 {
+	unsigned char c2;
 	c2 = readb(sport->port.membase + MVF_UART_C2);
 	c2 &= ~(UART_C2_TE | UART_C2_RE);
 	writeb(c2, sport->port.membase + MVF_UART_C2);
 
 }
-
+#endif
 /*
  * Write out a character once the UART is ready
  */
 static void __init mvfuart_console_write_char(struct uart_port *port, int ch)
 {
-	unsigned int status;
 
-	while (readb(sport->port.membase + S1) & UART_S1_TDRE)
-		barrier();
+	while (readb(port->membase + MVF_UART_S1) & UART_S1_TDRE);
 	
-	writeb(ch, sport->port.membase + UART_D);
+	writeb(ch,port->membase + MVF_UART_D);
 
 }
 
@@ -104,20 +106,20 @@ void __init early_mvfuart_console_write(struct console *co, const char *s,
 					u_int count)
 {
 	struct uart_port *port = &mvf_early_device.port;
-	unsigned int status, oldc1, oldc2, oldc3, c1, c2, c3;
+	unsigned int status, oldc1, oldc2, oldc3, c2;
 
 	/*
 	 * First save the control registers and then disable the interrupts
 	 */
-	oldc1 = readb(port->membase + UART_C1);
-	oldc2 = readb(port->membase + UART_C2);
-	oldc3 = readb(port->membase + UART_C3);
+	oldc1 = readb(port->membase + MVF_UART_C1);
+	oldc2 = readb(port->membase + MVF_UART_C2);
+	oldc3 = readb(port->membase + MVF_UART_C3);
 
 	c2 = oldc2 & ~(UART_C2_TE | UART_C2_RE 
 				   | UART_C2_RIE | UART_C2_RIE);
 
-	writeb(c2, port->membase + MVF_UARTUCR2);
-
+	writeb(c2, port->membase + MVF_UART_C2);
+	
 	/* Transmit string */
 	uart_console_write(port, s, count, mvfuart_console_write_char);
 
@@ -125,13 +127,13 @@ void __init early_mvfuart_console_write(struct console *co, const char *s,
 	 * Finally, wait for the transmitter to become empty
 	 */
 	do {
-		status = readb(port->membase + UART_S1);
+		status = readb(port->membase + MVF_UART_S1);
 	} while (!(status & UART_S1_TDRE));
 
 	/*
 	 * Restore the control registers
 	 */
-	writeb(oldc2, port->membase + UART_C2);
+	writeb(oldc2, port->membase + MVF_UART_C2);
 
 }
 
