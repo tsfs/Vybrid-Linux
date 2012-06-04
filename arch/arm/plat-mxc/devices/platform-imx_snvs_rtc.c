@@ -33,6 +33,11 @@ const struct imx_snvs_rtc_data imx6q_imx_snvs_rtc_data __initconst =
 	imx_snvs_rtc_data_entry_single(MX6Q);
 #endif /* ifdef CONFIG_SOC_IMX6Q */
 
+#ifdef CONFIG_SOC_VF6XX
+const struct imx_snvs_rtc_data vf6xx_imx_snvs_rtc_data __initconst =
+	imx_snvs_rtc_data_entry_single(VF6XX);
+#endif /* ifdef CONFIG_SOC_VF6XX */
+
 struct platform_device *__init imx_add_snvs_rtc(
 		const struct imx_snvs_rtc_data *data)
 {

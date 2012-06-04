@@ -34,12 +34,14 @@
 #include "cpu_op-mvf.h"
 
 
+#if 0 //FIXME
 void *mvf_wait_in_iram_base;
 void (*mvf_wait_in_iram)(void);
 extern void mvf_wait(void);
 
 
 struct cpu_op *(*get_cpu_op)(int *op);
+#endif
 bool enable_wait_mode;
 u32 arm_max_freq = CPU_AT_450MHz;
 
@@ -65,15 +67,15 @@ static int get_vf6xx_srev(void)
 	iounmap(romcp);
 	switch (rev) {
 	case 0x02:
-		cpu_silicon_rev = CHIP_REV_1_1;
+		cpu_silicon_rev = IMX_CHIP_REVISION_1_1;
 		break;
 	case 0x10:
 		break;
 	case 0x20:
-		cpu_silicon_rev = CHIP_REV_3_0;
+		cpu_silicon_rev = IMX_CHIP_REVISION_3_0;
 		break;
 	default:
-		cpu_silicon_rev = CHIP_REV_1_0;
+		cpu_silicon_rev = IMX_CHIP_REVISION_1_0;
 		break;
 	}
 	return 0;
@@ -103,7 +105,9 @@ static int __init post_cpu_init(void)
 	unsigned long iram_paddr, cpaddr;
 
 
+#if 0 //FIXME
 	iram_init(MVF_IRAM0_BASE_ADDR, MVF_IRAM0_SIZE);	//FIXME
+#endif
 
 	base = ioremap(AIPS0_ON_BASE_ADDR, PAGE_SIZE);
 	__raw_writel(0x0, base + 0x20);
@@ -126,7 +130,7 @@ static int __init post_cpu_init(void)
 	__raw_writel(reg, base + 0x80);
 	iounmap(base);
 
-	base = ioremap(AIPS2_ON_BASE_ADDR, PAGE_SIZE);
+	base = ioremap(AIPS1_ON_BASE_ADDR, PAGE_SIZE);
 	__raw_writel(0x0, base + 0x20);
 	__raw_writel(0x0, base + 0x24);
 	__raw_writel(0x0, base + 0x28);
@@ -147,6 +151,7 @@ static int __init post_cpu_init(void)
 	__raw_writel(reg, base + 0x80);
 	iounmap(base);
 
+#if 0 //FIXME
 	if (enable_wait_mode) {
 		/* Allow SCU_CLK to be disabled when all cores are in WFI*/
 		base = MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR);
@@ -155,13 +160,11 @@ static int __init post_cpu_init(void)
 		__raw_writel(reg, base);
 	}
 
-#if 0 //FIXME
 	/* Disable SRC warm reset to work aound system reboot issue */
 	base = MVF_IO_ADDRESS(MVF_ASRC_BASE_ADDR);
 	reg = __raw_readl(base);
 	reg &= ~0x1;
 	__raw_writel(reg, base);
-#endif
 
 	/* Allocate IRAM for WAIT code. */
 	/* Move wait routine into iRAM */
@@ -171,7 +174,7 @@ static int __init post_cpu_init(void)
 	mvf_wait_in_iram_base = __arm_ioremap(iram_paddr, SZ_4K,
 					  MT_MEMORY_NONCACHED);
 	pr_info("cpaddr = %x wait_iram_base=%x\n",
-		(unsigned int)cpaddr, (unsigned int)mx6_wait_in_iram_base);
+		(unsigned int)cpaddr, (unsigned int)mvf_wait_in_iram_base);
 
 	/*
 	 * Need to run the suspend code from IRAM as the DDR needs
@@ -179,14 +182,16 @@ static int __init post_cpu_init(void)
 	 */
 	memcpy((void *)cpaddr, mvf_wait, SZ_4K);
 	mvf_wait_in_iram = (void *)mvf_wait_in_iram_base;
+#endif
 
 	gpc_base = MVF_IO_ADDRESS(MVF_GPC_BASE_ADDR);
-	ccm_base = MX6_IO_ADDRESS(MVF_CCM_BASE_ADDR);
+	ccm_base = MVF_IO_ADDRESS(MVF_CCM_BASE_ADDR);
 
 	return 0;
 }
 postcore_initcall(post_cpu_init);
 
+#if 0 //FIXME
 static int __init enable_wait(char *p)
 {
 	if (memcmp(p, "on", 2) == 0) {
@@ -203,12 +208,12 @@ early_param("enable_wait_mode", enable_wait);
 static int __init arm_core_max(char *p)
 {
 	if (memcmp(p, "450", 3) == 0) {
-		arm_max_freq = CPU_AT_1_450MHz;
+		arm_max_freq = CPU_AT_450MHz;
 		p += 3;
 	}
 	return 0;
 }
 
 early_param("arm_freq", arm_core_max);
-
+#endif
 

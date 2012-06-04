@@ -22,6 +22,7 @@
 unsigned int __mxc_cpu_type;
 EXPORT_SYMBOL(__mxc_cpu_type);
 extern int mxc_early_serial_console_init(unsigned long base, struct clk *clk);
+extern int mvf_early_serial_console_init(unsigned long base, struct clk *clk);
 void (*set_num_cpu_op)(int num);
 
 void mxc_set_cpu_type(unsigned int type)
@@ -66,5 +67,8 @@ void __init early_console_setup(unsigned long base, struct clk *clk)
 {
 #ifdef CONFIG_SERIAL_IMX_CONSOLE
 	mxc_early_serial_console_init(base, clk);
+#endif
+#ifdef CONFIG_SERIAL_MVF_CONSOLE
+	mvf_early_serial_console_init(base, clk);
 #endif
 }

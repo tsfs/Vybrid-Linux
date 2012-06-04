@@ -33,12 +33,12 @@
 #include "regs-anadig.h"
 
 #if 0
-#define SCU_CTRL					0x00
-#define SCU_CONFIG					0x04
-#define SCU_CPU_STATUS				0x08
-#define SCU_INVALIDATE				0x0c
-#define SCU_FPGA_REVISION			0x10
-#define GPC_CNTR_OFFSET				0x0
+#define SCU_CTRL			0x00
+#define SCU_CONFIG			0x04
+#define SCU_CPU_STATUS			0x08
+#define SCU_INVALIDATE			0x0c
+#define SCU_FPGA_REVISION		0x10
+#define GPC_CNTR_OFFSET			0x0
 #define GPC_PGC_GPU_PGCR_OFFSET		0x260
 #define GPC_PGC_CPU_PDN_OFFSET		0x2a0
 #define GPC_PGC_CPU_PUPSCR_OFFSET	0x2a4

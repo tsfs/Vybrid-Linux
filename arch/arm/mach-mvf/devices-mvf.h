@@ -21,9 +21,9 @@
 #include <mach/mvf.h>
 #include <mach/devices-common.h>
 
-extern const struct imx_imx_uart_1irq_data vf6xx_imx_uart_data[] __initconst;
-#define vf6xx_add_imx_uart(id, pdata)	\
-	imx_add_imx_uart_1irq(&vf6xx_imx_uart_data[id], pdata)
+extern const struct imx_imx_uart_1irq_data mvf_imx_uart_data[] __initconst;
+#define mvf_add_imx_uart(id, pdata)	\
+	imx_add_imx_uart_1irq(&mvf_imx_uart_data[id], pdata)
 
 extern const struct imx_snvs_rtc_data vf6xx_imx_snvs_rtc_data __initconst;
 #define vf6xx_add_imx_snvs_rtc()	\

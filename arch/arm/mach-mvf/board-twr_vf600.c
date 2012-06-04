@@ -79,21 +79,20 @@
 //#include "cpu_op-mvf.h"
 #include "board-twr_vf600.h"
 
-#if 0 //FIXME
 void __init early_console_setup(unsigned long base, struct clk *clk);
 
+#if 0 //FIXME
 static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = {
 	.flags      = IMXUART_HAVE_RTSCTS | IMXUART_USE_DCEDTE | IMXUART_SDMA,
 	.dma_req_rx = MX6Q_DMA_REQ_UART2_RX,
 	.dma_req_tx = MX6Q_DMA_REQ_UART2_TX,
 };
+#endif //FIXME
 
 static inline void twr_vf600_init_uart(void)
 {
-	imx6q_add_imx_uart(3, NULL);
-	imx6q_add_imx_uart(1, &mx6_arm2_uart1_data);
+	mvf_add_imx_uart(1, NULL);
 }
-#endif //FIXME
 
 //FIXME
 static int twr_vf600_fec_phy_init(struct phy_device *phydev)
@@ -182,31 +181,8 @@ static void __init twr_vf600_init(void)
 	BUG_ON(!common_pads);
 	mxc_iomux_vmvf_setup_multiple_pads(common_pads, common_pads_cnt);
 
-	/*
-	 * IEEE-1588 ts_clk, S/PDIF in and i2c3 are mutually exclusive
-	 * because all of them use GPIO_16.
-	 * S/PDIF out and can1 stby are mutually exclusive because both
-	 * use GPIO_17.
-	 */
-	/* Set GPIO_16 input for IEEE-1588 ts_clk and RMII reference clock
-	 * For MX6 GPR1 bit21 meaning:
-	 * Bit21:       0 - GPIO_16 pad output
-	 *              1 - GPIO_16 pad input
-	 */
-	//mxc_iomux_set_gpr_register(1, 21, 1, 1);
-
-	/*
-	 * the following is the common devices support on the shared ARM2 boards
-	 * Since i.MX6DQ/DL share the same memory/Register layout, we don't
-	 * need to diff the i.MX6DQ or i.MX6DL here. We can simply use the
-	 * mx6q_add_features() for the shared devices. For which only exist
-	 * on each indivual SOC, we can use cpu_is_mx6q/6dl() to diff it.
-	 */
-
-#if 0
 	twr_vf600_init_uart();
-	mvf_add_imx_snvs_rtc();
-#endif
+	vf6xx_add_imx_snvs_rtc();
 	mvf_init_fec(fec_data);
 
 #if 0
@@ -228,13 +204,8 @@ static void __init mvf_timer_init(void)
 #endif
 	mvf_clocks_init(128000, 24000000, 32000, 24000000);
 
-#if 1 //FIXME
 	uart_clk = clk_get_sys("imx-uart.1", NULL);
 	early_console_setup(MVF_UART1_BASE_ADDR, uart_clk);
-#else
-	uart_clk = clk_get_sys("imx-uart.2", NULL);
-	early_console_setup(MVF_UART2_BASE_ADDR, uart_clk);
-#endif
 }
 
 static struct sys_timer mxc_timer = {
