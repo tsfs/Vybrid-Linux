@@ -1,6 +1,9 @@
 /*
  * based on arch/arm/plat-mxc/include/mach/iomux-v3.h
  *
+ * Copyright (C) 2009 by Jan Weitzel Phytec Messtechnik GmbH,
+ *			<armlinux@phytec.de>
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -94,7 +97,8 @@ typedef u64 iomux_vmvf_cfg_t;
 #define MUX_CTL_PAD_DDR_TRIM_150PS	(3 << 14)
 
 #define MUX_CTL_PAD_SPEED_LOW		(0 << 12)
-#define MUX_CTL_PAD_SPEED_MED		(2 << 12)
+#define MUX_CTL_PAD_SPEED_MED01		(1 << 12)
+#define MUX_CTL_PAD_SPEED_MED10		(2 << 12)
 #define MUX_CTL_PAD_SPEED_HIGH		(3 << 12)
 
 #define MUX_CTL_PAD_SRE_SLOW		(0 << 11)

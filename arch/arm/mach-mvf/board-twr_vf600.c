@@ -79,6 +79,31 @@
 //#include "cpu_op-mvf.h"
 #include "board-twr_vf600.h"
 
+/* GPIO PIN, sort by PORT/BIT */
+#define TWR_VF600_GPIO10		IMX_GPIO_NR(1, 10)	//PTA20
+#define TWR_VF600_GPIO20		IMX_GPIO_NR(1, 20)	//PTA30
+#define TWR_VF600_GPIO21		IMX_GPIO_NR(1, 21)	//PTA31
+#define TWR_VF600_GPIO28		IMX_GPIO_NR(1, 28)	//PTB6
+#define TWR_VF600_GPIO29		IMX_GPIO_NR(1, 29)	//PTB7
+#define TWR_VF600_GPIO30		IMX_GPIO_NR(1, 30)	//PTB8
+#define TWR_VF600_GPIO31		IMX_GPIO_NR(1, 31)	//PTB9
+#define TWR_VF600_GPIO32		IMX_GPIO_NR(2, 0)	//PTB10
+#define TWR_VF600_GPIO33		IMX_GPIO_NR(2, 1) 	//PTB11
+#define TWR_VF600_GPIO34		IMX_GPIO_NR(2, 2)	//PTB12
+#define TWR_VF600_GPIO38		IMX_GPIO_NR(2, 6)	//PTB16
+#define TWR_VF600_GPIO39		IMX_GPIO_NR(2, 7)	//PTB17
+#define TWR_VF600_GPIO85		IMX_GPIO_NR(3, 21)	//PTD6
+#define TWR_VF600_GPIO92		IMX_GPIO_NR(3, 28)	//PTD13
+#define TWR_VF600_GPIO93		IMX_GPIO_NR(3, 29)	//PTB23
+#define TWR_VF600_GPIO96		IMX_GPIO_NR(4, 0)	//PTB26
+#define TWR_VF600_GPIO98		IMX_GPIO_NR(4, 2)	//PTB28
+#define TWR_VF600_GPIO102		IMX_GPIO_NR(4, 6)	//PTC29
+#define TWR_VF600_GPIO103		IMX_GPIO_NR(4, 7)	//PTC30
+#define TWR_VF600_GPIO104		IMX_GPIO_NR(4, 8)	//PTC31
+#define TWR_VF600_GPIO108		IMX_GPIO_NR(4, 12)	//PTE3
+#define TWR_VF600_GPIO134		IMX_GPIO_NR(5, 6)	//PTA7
+
+
 void __init early_console_setup(unsigned long base, struct clk *clk);
 
 #if 0 //FIXME
@@ -204,7 +229,7 @@ static void __init mvf_timer_init(void)
 #endif
 	mvf_clocks_init(128000, 24000000, 32000, 24000000);
 
-	uart_clk = clk_get_sys("imx-uart.1", NULL);
+	uart_clk = clk_get_sys("mvf-uart.1", NULL);
 	early_console_setup(MVF_UART1_BASE_ADDR, uart_clk);
 }
 

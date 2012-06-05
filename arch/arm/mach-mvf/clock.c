@@ -2154,6 +2154,137 @@ static struct clk ftm3_clk = {
 	.set_parent = _clk_ftm3_set_parent,
 };
 
+static int _clk_nfc_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) | MXC_CCM_CSCDR2_NFC_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	return 0;
+}
+
+static void _clk_nfc_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_NFC_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+}
+
+static unsigned long _clk_nfc_get_rate(struct clk *clk)
+{
+	u32 reg, div, prediv, fracdiv, frac_en;
+
+	prediv = ((__raw_readl(MXC_CCM_CSCDR3) & MXC_CCM_CSCDR3_NFC_PRE_DIV_MASK) >> 
+			MXC_CCM_CSCDR3_NFC_PRE_DIV_OFFSET) + 1;
+	reg = __raw_readl(MXC_CCM_CSCDR2);
+	frac_en = MXC_CCM_CSCDR2_NFC_FRAC_DIV_EN & MXC_CCM_CSCDR2_NFC_FRAC_DIV_EN;
+	fracdiv = ((reg & MXC_CCM_CSCDR2_NFC_FRAC_DIV_MASK) >>
+			MXC_CCM_CSCDR2_NFC_FRAC_DIV_OFFSET) + 1;
+
+	if (!frac_en)
+		div = prediv * fracdiv;
+	else
+		div = prediv * fracdiv; //FIXME
+
+	return clk_get_rate(clk->parent) / div;
+
+}
+
+static int _clk_nfc_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg, div, pre, post;
+	u32 parent_rate = clk_get_rate(clk->parent);
+
+	div = parent_rate / rate;
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || div > 128)
+		return -EINVAL;
+
+	//FIXME
+	__calc_pre_post_dividers(1 << 4, div, &pre, &post);
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) & ~MXC_CCM_CSCDR3_NFC_PRE_DIV_MASK;
+	reg |= (pre -1) << MXC_CCM_CSCDR3_NFC_PRE_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_NFC_FRAC_DIV_MASK;
+	reg &= ~MXC_CCM_CSCDR2_NFC_FRAC_DIV_EN;
+	reg |= (post -1) << MXC_CCM_CSCDR2_NFC_FRAC_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	return 0;
+}
+
+static int _clk_nfc_set_parent(struct clk *clk, struct clk *parent)
+{
+	u32 reg;
+	int mux;
+
+	reg = __raw_readl(MXC_CCM_CSCMR1) & ~MXC_CCM_CSCMR1_NFC_CLK_SEL_MASK;
+	mux = _get_mux(parent, &plat_bus_clk, &pll1_pfd1, &pll3_pfd1, &pll3_pfd3);
+	reg |= mux << MXC_CCM_CSCMR1_NFC_CLK_SEL_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static struct clk nfc_clk_root = {
+	__INIT_CLK_DEBUG(nfc_clk_root)
+	.parent = &plat_bus_clk,
+	.enable = _clk_nfc_enable,
+	.disable = _clk_nfc_disable,
+	.get_rate = _clk_nfc_get_rate,
+	.set_rate = _clk_nfc_set_rate,
+	.set_parent = _clk_nfc_set_parent,
+};
+
+static struct clk nfc_clk[] = {
+	{
+	__INIT_CLK_DEBUG(nfc_clk_0)
+	.id = 0,
+	.parent = &nfc_clk_root,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &nfc_clk[1],
+	},
+	{
+	__INIT_CLK_DEBUG(nfc_clk_1)
+	.id = 1,
+	.parent = &nfc_clk_root,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &nfc_clk[2],
+	},
+	{
+	__INIT_CLK_DEBUG(nfc_clk_2)
+	.id = 2,
+	.parent = &nfc_clk_root,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG2_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &nfc_clk[3],
+	},
+	{
+	__INIT_CLK_DEBUG(nfc_clk_3)
+	.id = 3,
+	.parent = &nfc_clk_root,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG3_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	},
+};
+/* FIXME QSPI */
+
+
 static int _clk_enet_rmii_enable(struct clk *clk)
 {
 	u32 reg;
@@ -2251,6 +2382,8 @@ static struct clk enet_ts_clk = {
 	.set_parent = _clk_enet_ts_set_parent,
 #endif
 };
+
+/* FIXME eSDHC */
 
 static struct clk dcu0_clk_root;
 static struct clk dcu1_clk_root;
@@ -2523,6 +2656,8 @@ static struct clk dcu1_clk[] = {
 	},
 };
 
+/* FIXME ESAI, SPDIF, SAI */
+
 static int _clk_video_adc_enable(struct clk *clk)
 {
 	u32 reg;
@@ -2657,6 +2792,8 @@ static struct clk gpu_clk = {
 	.set_parent = _clk_gpu_set_parent,
 };
 
+/* FIXME SWO, Trace */
+
 static struct clk dma_mux0_clk = {
 	__INIT_CLK_DEBUG(dma_mux0_clk)
 	.parent = &ips_bus_clk,
@@ -2729,7 +2866,7 @@ static struct clk spi1_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: SAI0 - USBC0 */
+/* FIXME: USBC0 */
 
 static struct clk pdb_clk = {
 	__INIT_CLK_DEBUG(pdb_clk)
@@ -2787,7 +2924,7 @@ static struct clk lptmr_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: RLE - QSPI0 */
+/* FIXME: RLE */
 
 static struct clk iomux_clk = {
 	__INIT_CLK_DEBUG(iomux_clk)
@@ -2861,7 +2998,7 @@ static struct clk scsc_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: ASRC - ESAI */
+/* FIXME: ASRC */
 
 static struct clk ewm_clk = {
 	__INIT_CLK_DEBUG(ewm_clk)
@@ -2981,8 +3118,6 @@ static struct clk seg_lcd_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: QSPI1 */
-
 static struct clk video_dec_clk = {
 	__INIT_CLK_DEBUG(video_dec_clk)
 	.parent = &ips_bus_clk,
@@ -3000,8 +3135,6 @@ static struct clk viu3_clk = {
 	.enable = _clk_enable,
 	.disable = _clk_disable,
 };
-
-/* FIXME: NFC */
 
 static struct clk eth_l2_sw_clk[] = {
 	{
@@ -3149,6 +3282,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "ftm1_clk", ftm1_clk),
 	_REGISTER_CLOCK(NULL, "ftm2_clk", ftm2_clk),
 	_REGISTER_CLOCK(NULL, "ftm3_clk", ftm3_clk),
+	_REGISTER_CLOCK(NULL, "nfc_clk_root", nfc_clk_root),
+	_REGISTER_CLOCK(NULL, "nfc_clk", nfc_clk[0]),
 #if 1
 	_REGISTER_CLOCK(NULL, "fec_clk", enet_clk), //FIXME
 #else
@@ -3166,10 +3301,10 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "gpu_clk", gpu_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix0_clk", dma_mux0_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix1_clk", dma_mux1_clk),
-	_REGISTER_CLOCK("imx-uart.0", NULL, uart0_clk),
-	_REGISTER_CLOCK("imx-uart.1", NULL, uart1_clk),
-	_REGISTER_CLOCK("imx-uart.2", NULL, uart2_clk),
-	_REGISTER_CLOCK("imx-uart.3", NULL, uart3_clk),
+	_REGISTER_CLOCK("mvf-uart.0", NULL, uart0_clk),
+	_REGISTER_CLOCK("mvf-uart.1", NULL, uart1_clk),
+	_REGISTER_CLOCK("mvf-uart.2", NULL, uart2_clk),
+	_REGISTER_CLOCK("mvf-uart.3", NULL, uart3_clk),
 	_REGISTER_CLOCK(NULL, "spi0_clk", spi0_clk),
 	_REGISTER_CLOCK(NULL, "spi1_clk", spi1_clk),
 	_REGISTER_CLOCK(NULL, "pdb_clk", pdb_clk),
@@ -3194,8 +3329,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "dma_mix2_clk", dma_mux2_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix3_clk", dma_mux3_clk),
 	_REGISTER_CLOCK(NULL, "ocotp_clk", ocotp_clk),
-	_REGISTER_CLOCK("imx-uart.4", NULL, uart4_clk),
-	_REGISTER_CLOCK("imx-uart.5", NULL, uart5_clk),
+	_REGISTER_CLOCK("mvf-uart.4", NULL, uart4_clk),
+	_REGISTER_CLOCK("mvf-uart.5", NULL, uart5_clk),
 	_REGISTER_CLOCK(NULL, "tcon1_clk", tcon1_clk),
 	_REGISTER_CLOCK(NULL, "seg_lcd_clk", seg_lcd_clk),
 	_REGISTER_CLOCK(NULL, "video_dec_clk", video_dec_clk),
@@ -3346,7 +3481,7 @@ static void clk_tree_init(void)
 int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 	unsigned long oscl, unsigned long osch)
 {
-	__iomem void *base;
+	//__iomem void *base;
 	int i;
 
 	external_low_reference = ckil;
