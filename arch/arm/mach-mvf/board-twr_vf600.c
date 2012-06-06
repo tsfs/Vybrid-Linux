@@ -218,7 +218,7 @@ static void __init twr_vf600_init(void)
 }
 
 //extern void __iomem *twd_base;
-static void __init mvf_timer_init(void)
+static void __init vf600_timer_init(void)
 {
 	struct clk *uart_clk;
 #if 0 //FIXME
@@ -234,7 +234,7 @@ static void __init mvf_timer_init(void)
 }
 
 static struct sys_timer mxc_timer = {
-	.init   = mvf_timer_init,
+	.init   = vf600_timer_init,
 };
 
 #if 0 //FIXME

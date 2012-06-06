@@ -3481,7 +3481,7 @@ static void clk_tree_init(void)
 int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 	unsigned long oscl, unsigned long osch)
 {
-	//__iomem void *base;
+	__iomem void *base;
 	int i;
 
 	external_low_reference = ckil;
@@ -3501,6 +3501,7 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 	/* keep correct count. */
 	clk_enable(&cpu_clk);
 
+#if 0
 	/* Disable un-necessary PFDs & PLLs */
 	if (pll2_pfd1.usecount == 0)
 		pll2_pfd1.disable(&pll2_pfd1);
@@ -3510,6 +3511,7 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 		pll2_pfd3.disable(&pll2_pfd3);
 	if (pll2_pfd4.usecount == 0)
 		pll2_pfd4.disable(&pll2_pfd4);
+#endif
 
 #if !defined(CONFIG_FEC_1588)
 	pll3_pfd1.disable(&pll3_pfd1);
@@ -3710,7 +3712,7 @@ int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
 		     3 << MXC_CCM_CCGRx_CG8_OFFSET,
 		     MXC_CCM_CCGR11);
 
-#if 0 //FIXME
+#if 1 //FIXME
 	base = ioremap(MVF_PIT_BASE_ADDR, SZ_4K);
 	mvf_timer_init(&pit_clk, base, MXC_INT_PIT);
 #endif

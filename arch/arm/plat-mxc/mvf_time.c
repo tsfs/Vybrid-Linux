@@ -189,17 +189,25 @@ static irqreturn_t mvf_timer_interrupt(int irq, void *dev_id)
 static int mvf_set_next_event(unsigned long evt,
 			      struct clock_event_device *unused)
 {
-	unsigned long tcmp;
+	unsigned long tcmp,tmp;
 
 	tcmp = evt;
 	/* STOP Time */
-	__raw_writel(__raw_readl(PIT_TCTRL(TIMER_CH)) & ~(PIT_TCTRL_TEN), 
-							 timer_base + PIT_TCTRL(TIMER_CH));
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 & ~(PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
 	__raw_writel(tcmp, timer_base + PIT_LDVAL(TIMER_CH));
 	/* Start Timer */
-	__raw_writel(__raw_readl(PIT_TCTRL(TIMER_CH)) | (PIT_TCTRL_TEN), 
-							 timer_base + PIT_TCTRL(TIMER_CH));
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 | (PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
+#if 0
+	while(1) {
+		tmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
+		printk("val = %08lx\n",tmp);
+	}
 	
+#endif
 	return 0;
 
 }
@@ -245,17 +253,18 @@ void __init mvf_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 	uint32_t tctrl_val;
 	u32 reg;
 
-#if 0 /* Clock is fix to 50MHz */
+#if 1 /* Clock is fix to 50MHz */
 	clk_enable(timer_clk);
 #endif
-
+	printk("PIT base = 0x%08lx",(unsigned long)base);
 	timer_base = base;
 
 	/*
 	 * Initialise to a known state (all timers off, and timing reset)
 	 */
 
-	__raw_writel(PIT_MCR_MDIS, timer_base + PIT_MCR); /* Stop PIT */
+	//	__raw_writel(PIT_MCR_MDIS, timer_base + PIT_MCR); /* Stop PIT */
+	__raw_writel(0, timer_base + PIT_MCR); /* Stop PIT */
 
 	/* init and register the timer to the framework */
 	mvf_clocksource_init(timer_clk);

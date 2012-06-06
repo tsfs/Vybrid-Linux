@@ -52,9 +52,15 @@ static int mvf_gic_irq_set_wake(struct irq_data *d, unsigned int enable)
 
 void mvf_init_irq(void)
 {
-	void __iomem *gpc_base = MVF_IO_ADDRESS(MVF_GPC_BASE_ADDR);
+	//	void __iomem *gpc_base = MVF_IO_ADDRESS(MVF_GPC_BASE_ADDR);
 	struct irq_desc *desc;
 	unsigned int i;
+	void __iomem *mscm_base = MVF_IO_ADDRESS(MVF_MSCM_BASE_ADDR);
+
+	/* Interrupt Ruter Shared Peripheral */
+	for ( i = 0;i < 112;i++) {
+		__raw_writew(0x01,mscm_base + 0x880 + (i<<1));
+	}
 
 	/* start offset if private timer irq id, which is 29.
 	 * ID table:
