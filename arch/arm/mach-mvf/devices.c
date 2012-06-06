@@ -81,5 +81,5 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 int mvf_register_gpios(void)
 {
 	/* 5 ports for MVF */
-	return mvf_gpio_init(mvf_gpio_ports, 7);
+	return mvf_gpio_init(mvf_gpio_ports, 5);
 }

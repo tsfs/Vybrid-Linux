@@ -541,29 +541,36 @@ static int serial_mvf_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct resource *res;
 
+	/* Allocate mvf port struct */
 	sport = kzalloc(sizeof(*sport),GFP_KERNEL);
 
 	if ( !sport )
 		return -ENOMEM;
 
+	/* Get memory resources */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if ( !res ){
 		ret = ENODEV;
 		goto free;
 	}
-
+	
 	base = ioremap(res->start, PAGE_SIZE);
 	
 
 	sport->port.dev = &pdev->dev;
 	sport->port.mapbase = res->start;
 	sport->port.membase = base;
-	sport->port.type = PORT_IMX,
+	sport->port.type = PORT_IMX;
 	sport->port.iotype = UPIO_MEM;
+	/* Get IRQ 1 */
 	sport->port.irq = platform_get_irq(pdev, 0);
+	/* Is this Machine usr irqs?*/
+#if 0
 	sport->rxirq = platform_get_irq(pdev, 0);
 	sport->txirq = platform_get_irq(pdev, 1);
 	sport->rtsirq = platform_get_irq(pdev, 2);
+#endif
+	
 	sport->port.fifosize = 32;
 	sport->port.ops = &mvf_pops;
 	sport->port.flags = UPF_BOOT_AUTOCONF;
@@ -623,9 +630,27 @@ free:
 }
 
 
-static int serial_mvf_remove(struct platform_device *dev)
+static int serial_mvf_remove(struct platform_device *pdev)
 {
+	struct mvfuart_platform_data *pdata;
+	struct mvf_port *sport = platform_get_drvdata(pdev);
+	
+	pdata = pdev->dev.platform_data;
+	
+	platform_set_drvdata(pdev, NULL);
+	
+	if (sport){
+		uart_remove_one_port(&mvf_reg, &sport->port);
+	}
 
+	clk_disable(sport->clk);
+
+	if (pdata && pdata->exit)
+		pdata->exit(pdev);
+	
+	iounmap(sport->port.membase);
+	kfree(sport);
+	
 	return 0;
 }
 

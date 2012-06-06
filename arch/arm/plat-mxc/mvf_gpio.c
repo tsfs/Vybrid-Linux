@@ -166,6 +166,7 @@ static void gpio_mask_irq(struct irq_data *d)
 static void gpio_unmask_irq(struct irq_data *d)
 {
 	u32 gpio = irq_to_gpio(d->irq);
+	printk("gpio = %d\n",gpio);
 	_set_gpio_irqenable(&mvf_gpio_ports[gpio / 32], gpio & 0x1f, 1);
 }
 
