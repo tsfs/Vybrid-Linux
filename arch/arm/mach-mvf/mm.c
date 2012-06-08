@@ -31,7 +31,7 @@
 #include <asm/hardware/cache-l2x0.h>
 
 /*!
- * This structure defines the Faraday memory map.
+ * This structure defines the MVF memory map.
  */
 static struct map_desc mvf_io_desc[] __initdata = {
 	imx_map_entry(MVF, AIPS0, MT_DEVICE),

@@ -40,7 +40,7 @@ static DECLARE_WAIT_QUEUE_HEAD(ptp_tx_ts_wait);
 
 #if defined(CONFIG_ARCH_MX28)
 static struct fec_ptp_private *ptp_private[2];
-#elif defined(CONFIG_ARCH_MX6)
+#elif defined(CONFIG_ARCH_MX6) || defined(CONFIG_ARCH_MVF)
 static struct fec_ptp_private *ptp_private[1];
 #endif
 
@@ -575,7 +575,7 @@ static void fec_handle_ptpdrift(struct ptp_set_comp *comp,
 				struct ptp_time_correct *ptc)
 {
 	u32 ndrift;
-	u32 i, adj_inc, adj_period;
+	u32 i, adj_inc, adj_period=0;
 	u32 tmp_current, tmp_winner;
 
 	ndrift = comp->drift;

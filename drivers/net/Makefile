@@ -137,6 +137,10 @@ endif
 ifeq ($(CONFIG_ARCH_MX6),y)
 	obj-$(CONFIG_FEC_1588) += fec_1588.o
 endif
+ifeq ($(CONFIG_ARCH_MVF),y)
+	obj-$(CONFIG_FEC_1588) += fec_1588.o
+endif
+obj-$(CONFIG_MVF_ETHER_SWITCH) += mvf_switch.o
 obj-$(CONFIG_68360_ENET) += 68360enet.o
 obj-$(CONFIG_WD80x3) += wd.o 8390.o
 obj-$(CONFIG_EL2) += 3c503.o 8390p.o

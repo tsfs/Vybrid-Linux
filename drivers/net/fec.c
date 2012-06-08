@@ -1427,7 +1427,7 @@ fec_restart(struct net_device *dev, int duplex)
 				fep->ptimer_present = 0;
 				reg = 0x0;
 			} else
-#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6)
+#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6) || defined(CONFIG_ARCH_VF600)
 				reg = 0x00000010;
 #else
 				reg = 0x0;
@@ -1457,13 +1457,14 @@ fec_restart(struct net_device *dev, int duplex)
 	/* ENET enable */
 	val = reg | (0x1 << 1);
 
+#ifndef CONFIG_ARCH_VF600
 	/* if phy work at 1G mode, set ENET RGMII speed to 1G */
 	if (fep->phy_dev && (fep->phy_dev->supported &
 		(SUPPORTED_1000baseT_Half | SUPPORTED_1000baseT_Full)) &&
 		fep->phy_interface == PHY_INTERFACE_MODE_RGMII &&
 		fep->phy_dev->speed == SPEED_1000)
 		val |= (0x1 << 5);
-
+#endif
 	if (cpu_is_mx6()) {
 		/* enable endian swap */
 		val |= (0x1 << 8);

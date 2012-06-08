@@ -49,7 +49,7 @@
 #define FEC_MIIGSK_ENR		0x308 /* MIIGSK Enable reg */
 
 /* Define the FEC 1588 registers offset */
-#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6)
+#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6) || defined(CONFIG_ARCH_MVF)
 #define FEC_ATIME_CTRL		0x400
 #define FEC_ATIME		0x404
 #define FEC_ATIME_EVT_OFFSET	0x408
@@ -87,7 +87,7 @@
 #endif /* CONFIG_M5272 */
 
 
-#if (defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6)) \
+#if (defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6)) || defined(CONFIG_ARCH_MVF) \
 				&& defined(CONFIG_FEC_1588)
 #define CONFIG_ENHANCED_BD
 #endif
