@@ -109,6 +109,7 @@ static int __init post_cpu_init(void)
 	iram_init(MVF_IRAM0_BASE_ADDR, MVF_IRAM0_SIZE);	//FIXME
 #endif
 
+#if 0 //FIXME
 	base = ioremap(AIPS0_ON_BASE_ADDR, PAGE_SIZE);
 	__raw_writel(0x0, base + 0x20);
 	__raw_writel(0x0, base + 0x24);
@@ -150,6 +151,7 @@ static int __init post_cpu_init(void)
 	reg = __raw_readl(base + 0x80) & 0x00FFFFFF;
 	__raw_writel(reg, base + 0x80);
 	iounmap(base);
+#endif
 
 #if 0 //FIXME
 	if (enable_wait_mode) {
