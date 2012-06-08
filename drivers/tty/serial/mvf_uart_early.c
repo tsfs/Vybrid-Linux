@@ -89,7 +89,7 @@ static inline int mvf_uart_disable(struct mvf_port *sport)
 static void __init mvfuart_console_write_char(struct uart_port *port, int ch)
 {
 
-	while (readb(port->membase + MVF_UART_S1) & UART_S1_TDRE);
+	while (!(readb(port->membase + MVF_UART_S1) & UART_S1_TDRE));
 	
 	writeb(ch,port->membase + MVF_UART_D);
 
@@ -117,6 +117,7 @@ void __init early_mvfuart_console_write(struct console *co, const char *s,
 
 	c2 = oldc2 & ~(UART_C2_TE | UART_C2_RE 
 				   | UART_C2_RIE | UART_C2_RIE);
+	c2 |= (UART_C2_TE | UART_C2_RE);
 
 	writeb(c2, port->membase + MVF_UART_C2);
 	
