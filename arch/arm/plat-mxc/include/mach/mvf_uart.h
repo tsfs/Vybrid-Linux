@@ -157,5 +157,13 @@ struct mvfuart_platform_data {
 #define UART_S2_LBKDE   (1<<1)
 #define UART_S2_RAF     (1<<0)
 
+#define UART_SFIFO_TXEMPT (1<<7)
+#define UART_SFIFO_RXEMPT (1<<6)
+#define UART_SFIFO_RXOF   (1<<2)
+#define UART_SFIFO_TXOF   (1<<1)
+#define UART_SFIFO_RXUF   (1<<0)
+
+#define UART_PFIFO_TXFE   (1<<7)
+#define UART_PFOFO_RXFE   (1<<3)
 #endif
 #endif
