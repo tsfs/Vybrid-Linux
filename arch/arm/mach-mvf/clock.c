@@ -107,8 +107,8 @@ static int cpu_op_nr;
 })
 
 /* External clock values passed-in by the board code */
+static unsigned long internal_high_reference, internal_low_reference;
 static unsigned long external_high_reference, external_low_reference;
-static unsigned long oscillator_high_reference, oscillator_low_reference;
 static unsigned long anaclk_1_reference, audio_ext_clk_reference;
 static unsigned long enet_ext_clk_reference, enet_ts_clk_reference;
 static unsigned long usb_clk_reference;
@@ -294,22 +294,22 @@ static inline u32 _get_mux6(struct clk *parent, struct clk *m0, struct clk *m1,
 
 static unsigned long get_high_reference_clock_rate(struct clk *clk)
 {
-	return external_high_reference;
+	return internal_high_reference;
 }
 
 static unsigned long get_low_reference_clock_rate(struct clk *clk)
 {
+	return internal_low_reference;
+}
+
+static unsigned long get_external_high_reference_clock_rate(struct clk *clk)
+{
+	return external_high_reference;
+}
+
+static unsigned long get_external_low_reference_clock_rate(struct clk *clk)
+{
 	return external_low_reference;
-}
-
-static unsigned long get_oscillator_high_reference_clock_rate(struct clk *clk)
-{
-	return oscillator_high_reference;
-}
-
-static unsigned long get_oscillator_low_reference_clock_rate(struct clk *clk)
-{
-	return oscillator_low_reference;
 }
 
 static unsigned long _clk_anaclk_1_get_rate(struct clk *clk)
@@ -361,26 +361,28 @@ static unsigned long _clk_usb_clk_get_rate(struct clk *clk)
 	return 60000000;
 }
 
-/* External high frequency clock */
+/* Internal high frequency clock */
 static struct clk ckih_clk = {
 	__INIT_CLK_DEBUG(ckih_clk)
 	.get_rate = get_high_reference_clock_rate,
 };
 
+/* External high frequency clock */
 static struct clk osch_clk = {
 	__INIT_CLK_DEBUG(osch_clk)
-	.get_rate = get_oscillator_high_reference_clock_rate,
+	.get_rate = get_external_high_reference_clock_rate,
 };
 
-/* External low frequency (32kHz) clock */
+/* Internal low frequency (128kHz) clock */
 static struct clk ckil_clk = {
 	__INIT_CLK_DEBUG(ckil_clk)
 	.get_rate = get_low_reference_clock_rate,
 };
 
+/* External low frequency (32kHz) clock */
 static struct clk oscl_clk = {
 	__INIT_CLK_DEBUG(oscl_clk)
-	.get_rate = get_oscillator_low_reference_clock_rate,
+	.get_rate = get_external_low_reference_clock_rate,
 };
 
 static struct clk anaclk_1 = {
@@ -1680,9 +1682,7 @@ static struct clk snvs_clk = {
 
 static struct clk wdog_snvs_clk = {
 	__INIT_CLK_DEBUG(wdog_snvs_clk)
-	//FIXME: which is parent?
 	.parent = &ips_bus_clk,
-	//.parent = &snvs_clk,
 	.enable_reg = MXC_CCM_CCGR6,
 	.enable_shift = MXC_CCM_CCGRx_CG8_OFFSET,
 	.enable = _clk_enable,
@@ -2383,7 +2383,149 @@ static struct clk enet_ts_clk = {
 #endif
 };
 
-/* FIXME eSDHC */
+static int _clk_sdhc0_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) | MXC_CCM_CSCDR2_ESDHC0_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	_clk_enable(clk);
+
+	return 0;
+}
+
+static void _clk_sdhc0_disable(struct clk *clk)
+{
+	u32 reg;
+
+	_clk_disable(clk);
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_ESDHC0_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+}
+
+static unsigned long _clk_sdhc0_get_rate(struct clk *clk)
+{
+	u32 reg = __raw_readl(MXC_CCM_CSCDR2);
+	u32 div = ((reg & MXC_CCM_CSCDR2_ESDHC0_DIV_MASK) >>
+			MXC_CCM_CSCDR2_ESDHC0_DIV_OFFSET) + 1;
+	return clk_get_rate(clk->parent) / div;
+}
+
+static int _clk_sdhc0_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg;
+	u32 parent_rate = clk_get_rate(clk->parent);
+	u32 div = parent_rate / rate;
+
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || (div > 16))
+		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_ESDHC0_DIV_MASK;
+	reg |= (div -1) << MXC_CCM_CSCDR2_ESDHC0_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+	return 0;
+}
+
+static int _clk_sdhc0_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR1) & ~MXC_CCM_CSCMR1_ESDHC0_CLK_SEL_MASK;
+
+	mux = _get_mux(parent, &pll3_480_usb1_main_clk, &pll3_pfd3,
+			&pll1_pfd3, &plat_bus_clk);
+	reg |= (mux << MXC_CCM_CSCMR1_ESDHC0_CLK_SEL_OFFSET);
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static struct clk sdhc0_clk = {
+	__INIT_CLK_DEBUG(sdhc0_clk)
+	.parent = &pll3_480_usb1_main_clk,
+	.enable_reg = MXC_CCM_CCGR7,
+	.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
+	.enable = _clk_sdhc0_enable,
+	.disable = _clk_sdhc0_disable,
+	.get_rate = _clk_sdhc0_get_rate,
+	.set_rate = _clk_sdhc0_set_rate,
+	.set_parent = _clk_sdhc0_set_parent,
+};
+
+static int _clk_sdhc1_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) | MXC_CCM_CSCDR2_ESDHC1_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+
+	_clk_enable(clk);
+
+	return 0;
+}
+
+static void _clk_sdhc1_disable(struct clk *clk)
+{
+	u32 reg;
+
+	_clk_disable(clk);
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_ESDHC1_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+}
+
+static unsigned long _clk_sdhc1_get_rate(struct clk *clk)
+{
+	u32 reg = __raw_readl(MXC_CCM_CSCDR2);
+	u32 div = ((reg & MXC_CCM_CSCDR2_ESDHC1_DIV_MASK) >>
+			MXC_CCM_CSCDR2_ESDHC1_DIV_OFFSET) + 1;
+	return clk_get_rate(clk->parent) / div;
+}
+
+static int _clk_sdhc1_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg;
+	u32 parent_rate = clk_get_rate(clk->parent);
+	u32 div = parent_rate / rate;
+
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || (div > 16))
+		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CSCDR2) & ~MXC_CCM_CSCDR2_ESDHC1_DIV_MASK;
+	reg |= (div -1) << MXC_CCM_CSCDR2_ESDHC1_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR2);
+	return 0;
+}
+
+static int _clk_sdhc1_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR1) & ~MXC_CCM_CSCMR1_ESDHC1_CLK_SEL_MASK;
+
+	mux = _get_mux(parent, &pll3_480_usb1_main_clk, &pll3_pfd3,
+			&pll1_pfd3, &plat_bus_clk);
+	reg |= (mux << MXC_CCM_CSCMR1_ESDHC1_CLK_SEL_OFFSET);
+	__raw_writel(reg, MXC_CCM_CSCMR1);
+
+	return 0;
+}
+
+static struct clk sdhc1_clk = {
+	__INIT_CLK_DEBUG(sdhc1_clk)
+	.parent = &pll3_480_usb1_main_clk,
+	.enable_reg = MXC_CCM_CCGR7,
+	.enable_shift = MXC_CCM_CCGRx_CG2_OFFSET,
+	.enable = _clk_sdhc1_enable,
+	.disable = _clk_sdhc1_disable,
+	.get_rate = _clk_sdhc1_get_rate,
+	.set_rate = _clk_sdhc1_set_rate,
+	.set_parent = _clk_sdhc1_set_parent,
+};
 
 static struct clk dcu0_clk_root;
 static struct clk dcu1_clk_root;
@@ -2793,6 +2935,17 @@ static struct clk gpu_clk = {
 };
 
 /* FIXME SWO, Trace */
+#if 0
+static struct clk swo_clk = {
+	__INIT_CLK_DEBUG(swo_clk)
+	.parent = &pll2_pfd2, //FIXME
+	.enable = _clk_swo_enable,
+	.disable = _clk_swo_disable,
+	.set_rate = _clk_swo_set_rate,
+	.get_rate = _clk_swo_get_rate,
+	.set_parent = _clk_swo_set_parent,
+};
+#endif
 
 static struct clk dma_mux0_clk = {
 	__INIT_CLK_DEBUG(dma_mux0_clk)
@@ -3292,6 +3445,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "enet_div2_clk", enet_div2_clk),
 	_REGISTER_CLOCK(NULL, "enet_rmii_clk", enet_rmii_clk),
 	_REGISTER_CLOCK(NULL, "enet_ts_clk", enet_ts_clk),
+	_REGISTER_CLOCK(NULL, "sdhc0_clk", sdhc0_clk),
+	_REGISTER_CLOCK(NULL, "sdhc1_clk", sdhc1_clk),
 	_REGISTER_CLOCK(NULL, "dcu0_clk_root", dcu0_clk_root),
 	_REGISTER_CLOCK(NULL, "dcu1_clk_root", dcu1_clk_root),
 	_REGISTER_CLOCK(NULL, "dcu0_clk", dcu0_clk[0]),
@@ -3478,16 +3633,16 @@ static void clk_tree_init(void)
 }
 
 
-int __init mvf_clocks_init(unsigned long ckil, unsigned long ckih,
-	unsigned long oscl, unsigned long osch)
+int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
+	unsigned long sxosc, unsigned long fxosc)
 {
 	__iomem void *base;
 	int i;
 
-	external_low_reference = ckil;
-	external_high_reference = ckih;
-	oscillator_low_reference = oscl;
-	oscillator_high_reference = osch;
+	internal_low_reference = sirc;
+	internal_high_reference = firc;
+	external_low_reference = sxosc;
+	external_high_reference = fxosc;
 
 	apll_base = ioremap(MVF_ANADIG_BASE_ADDR, SZ_4K);
 
