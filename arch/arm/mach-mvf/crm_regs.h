@@ -316,6 +316,7 @@
 /* Define the bits in register CSCDR3 */
 #define MXC_CCM_CSCDR3_SWO_EN			(1 << 28)
 #define MXC_CCM_CSCDR3_SWO_DIV			(1 << 27)
+#define MXC_CCM_CSCDR3_SWO_DIV_OFFSET		(27)
 #define MXC_CCM_CSCDR3_TRACE_EN			(1 << 26)
 #define MXC_CCM_CSCDR3_TRACE_DIV_MASK		(0x3 << 24)
 #define MXC_CCM_CSCDR3_TRACE_DIV_OFFSET		(24)
@@ -342,7 +343,9 @@
 
 /* Define the bits in register CSCMR2 */
 #define MXC_CCM_CSCMR2_SWO_CLK_SEL		(1 << 19)
+#define MXC_CCM_CSCMR2_SWO_CLK_SEL_OFFSET	(19)
 #define MXC_CCM_CSCMR2_TRACE_CLK_SEL		(1 << 18)
+#define MXC_CCM_CSCMR2_TRACE_CLK_SEL_OFFSET	(18)
 #define MXC_CCM_CSCMR2_FTM3_FIX_CLK_SEL		(1 << 17)
 #define MXC_CCM_CSCMR2_FTM3_FIX_CLK_SEL_OFFSET	(17)
 #define MXC_CCM_CSCMR2_FTM2_FIX_CLK_SEL		(1 << 16)

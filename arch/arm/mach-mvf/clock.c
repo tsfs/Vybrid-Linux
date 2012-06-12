@@ -1483,7 +1483,6 @@ static int _clk_ca5_set_parent(struct clk *clk, struct clk *parent)
 static struct clk cpu_clk = {
 	__INIT_CLK_DEBUG(cpu_clk)
 	.parent = &sys_clk,
-	//FIXME: need enable/disable CA5-XXX on AIPS?
 #if 0	//we do not support to change ca5_clk
 	.set_parent = _clk_ca5_set_parent,
 #endif
@@ -2154,6 +2153,7 @@ static struct clk ftm3_clk = {
 	.set_parent = _clk_ftm3_set_parent,
 };
 
+/* FIXME NFC */
 static int _clk_nfc_enable(struct clk *clk)
 {
 	u32 reg;
@@ -2934,18 +2934,141 @@ static struct clk gpu_clk = {
 	.set_parent = _clk_gpu_set_parent,
 };
 
-/* FIXME SWO, Trace */
-#if 0
+static int _clk_swo_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) | MXC_CCM_CSCDR3_SWO_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static void _clk_swo_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) & ~MXC_CCM_CSCDR3_SWO_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+}
+
+static unsigned long _clk_swo_get_rate(struct clk *clk)
+{
+	u32 reg = __raw_readl(MXC_CCM_CSCDR3);
+	u32 div = ((reg & MXC_CCM_CSCDR3_SWO_DIV) >>
+		  MXC_CCM_CSCDR3_SWO_DIV_OFFSET) + 1;
+
+	return clk_get_rate(clk->parent) / div;
+}
+
+static int _clk_swo_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg;
+	u32 parent_rate = clk_get_rate(clk->parent);
+	u32 div = parent_rate / rate;
+
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || (div > 2))
+		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) & ~MXC_CCM_CSCDR3_SWO_DIV;
+	reg |= (div -1) << MXC_CCM_CSCDR3_SWO_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static int _clk_swo_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR2) & ~MXC_CCM_CSCMR2_SWO_CLK_SEL;
+
+	mux = _get_mux(parent, &ckih_clk, &ips_bus_clk, NULL, NULL);
+	reg |= mux << MXC_CCM_CSCMR2_SWO_CLK_SEL_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCMR2);
+
+	return 0;
+}
+
 static struct clk swo_clk = {
 	__INIT_CLK_DEBUG(swo_clk)
-	.parent = &pll2_pfd2, //FIXME
+	.parent = &ips_bus_clk, //FIXME
 	.enable = _clk_swo_enable,
 	.disable = _clk_swo_disable,
 	.set_rate = _clk_swo_set_rate,
 	.get_rate = _clk_swo_get_rate,
 	.set_parent = _clk_swo_set_parent,
 };
-#endif
+
+/* FIXME Trace */
+static int _clk_trace_enable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) | MXC_CCM_CSCDR3_TRACE_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static void _clk_trace_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) & ~MXC_CCM_CSCDR3_TRACE_EN;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+}
+
+static unsigned long _clk_trace_get_rate(struct clk *clk)
+{
+	u32 reg = __raw_readl(MXC_CCM_CSCDR3);
+	u32 div = ((reg & MXC_CCM_CSCDR3_TRACE_DIV_MASK) >>
+		  MXC_CCM_CSCDR3_TRACE_DIV_OFFSET) + 1;
+
+	return clk_get_rate(clk->parent) / div;
+}
+
+static int _clk_trace_set_rate(struct clk *clk, unsigned long rate)
+{
+	u32 reg;
+	u32 parent_rate = clk_get_rate(clk->parent);
+	u32 div = parent_rate / rate;
+
+	if (div == 0)
+		div++;
+	if (((parent_rate / div) != rate) || (div > 4))
+		return -EINVAL;
+
+	reg = __raw_readl(MXC_CCM_CSCDR3) & ~MXC_CCM_CSCDR3_TRACE_DIV_MASK;
+	reg |= (div -1) << MXC_CCM_CSCDR3_TRACE_DIV_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCDR3);
+
+	return 0;
+}
+
+static int _clk_trace_set_parent(struct clk *clk, struct clk *parent)
+{
+	int mux;
+	u32 reg = __raw_readl(MXC_CCM_CSCMR2) & ~MXC_CCM_CSCMR2_TRACE_CLK_SEL;
+
+	mux = _get_mux(parent, &plat_bus_clk, &pll3_480_usb1_main_clk,
+			NULL, NULL);
+	reg |= mux << MXC_CCM_CSCMR2_TRACE_CLK_SEL_OFFSET;
+	__raw_writel(reg, MXC_CCM_CSCMR2);
+
+	return 0;
+}
+
+static struct clk trace_clk = {
+	__INIT_CLK_DEBUG(trace_clk)
+	.parent = &plat_bus_clk, //FIXME
+	.enable = _clk_trace_enable,
+	.disable = _clk_trace_disable,
+	.set_rate = _clk_trace_set_rate,
+	.get_rate = _clk_trace_get_rate,
+	.set_parent = _clk_trace_set_parent,
+};
 
 static struct clk dma_mux0_clk = {
 	__INIT_CLK_DEBUG(dma_mux0_clk)
@@ -3454,6 +3577,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "video_adc_clk", video_adc_clk),
 	_REGISTER_CLOCK(NULL, "video_adc_div2_clk", video_adc_div2_clk),
 	_REGISTER_CLOCK(NULL, "gpu_clk", gpu_clk),
+	_REGISTER_CLOCK(NULL, "swo_clk", swo_clk),
+	_REGISTER_CLOCK(NULL, "trace_clk", trace_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix0_clk", dma_mux0_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix1_clk", dma_mux1_clk),
 	_REGISTER_CLOCK("mvf-uart.0", NULL, uart0_clk),
