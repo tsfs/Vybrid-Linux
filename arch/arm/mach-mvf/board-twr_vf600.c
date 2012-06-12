@@ -116,7 +116,12 @@ static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = {
 
 static inline void twr_vf600_init_uart(void)
 {
+	mvf_add_imx_uart(0, NULL);
 	mvf_add_imx_uart(1, NULL);
+	mvf_add_imx_uart(2, NULL);
+	mvf_add_imx_uart(3, NULL);
+	mvf_add_imx_uart(4, NULL);
+	mvf_add_imx_uart(5, NULL);
 }
 
 //FIXME

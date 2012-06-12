@@ -50,7 +50,7 @@
 #define SERIAL_MVF_MAJOR        207
 #define MINOR_START	        16
 #define DRIVER_NAME  "MVF-uart"
-#define DEV_NAME	 "ttymxc"
+#define DEV_NAME	 "ttymvf"
 
 #define UART_NR   6
 
@@ -88,7 +88,7 @@ static inline int mvf_set_bps(struct mvf_port *sport,
 {
 	unsigned char bdh,bdl;
 	unsigned long sbr;
-	sbr = base/((bps*10)+5)/160;
+	sbr = base/(16*bps);
 	bdh = readb(sport->port.membase + MVF_UART_BDH) & 0xc0;
 	bdh = (sbr>>8) & 0x1f;
 	bdl = (sbr&0xff);
@@ -175,6 +175,7 @@ static void mvf_enable_ms(struct uart_port *port)
 static inline void mvf_transmit_buffer(struct mvf_port *sport)
 {
 	struct circ_buf *xmit = &sport->port.state->xmit;
+
 
 	while (!uart_circ_empty(xmit) &&
 		   !(readb(sport->port.membase + MVF_UART_TCFIFO) < sport->txfifo)){
@@ -454,10 +455,9 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 {
 	struct mvf_port *sport = (struct mvf_port *)port;
 	unsigned long flags;
-	unsigned int baud,quot;
+	unsigned int baud;
 	unsigned char c1,c2,c3;
 	
-
 	/*
 	 * Release 1: No support Mode control lines.
 	 */
@@ -469,9 +469,10 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	/*
 	 * We only support CS8.
 	 */
-	termios->c_cflag = CS8;
+	termios->c_cflag &=~CSIZE;
+	termios->c_cflag |= CS8;
 	
-	c1 = UART_C1_M;
+	c1 &=~UART_C1_M;
 	c2 = readb(sport->port.membase + MVF_UART_C2);
 	c3 = readb(sport->port.membase + MVF_UART_C3);
 
@@ -480,8 +481,11 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 		c1 |= UART_C1_PE;
 		if (termios->c_cflag & PARODD)
 			c1 |= UART_C1_PT;
-	}
-		
+		else
+			c1 &= ~UART_C1_PT;
+	}else
+		c1 &= ~(UART_C1_PE | UART_C1_PT);
+	
 	/*
 	 * We only supprt STOPB
 	 */
@@ -490,8 +494,7 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * Ask the core to calculate the divisor for us.
 	 */
 	baud = uart_get_baud_rate(port, termios, old, 50, port->uartclk / 16);
-	quot = uart_get_divisor(port, baud);
-	mvf_set_bps(sport,clk_get_rate(sport->clk),baud);
+	mvf_set_bps(sport,port->uartclk,baud);
 
 	/*
 	 * Update the per-port timeout.
@@ -505,9 +508,8 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	writeb(c2,sport->port.membase + MVF_UART_C2);
 	writeb(c3,sport->port.membase + MVF_UART_C3);
 
-
 	spin_unlock_irqrestore(&sport->port.lock, flags);
-		
+	
 }
 
 static const char *mvf_type(struct uart_port *port)
@@ -616,7 +618,7 @@ static void mvf_console_putchar(struct uart_port *port, int ch)
 {
 	struct mvf_port *sport = (struct mvf_port *)port;
 	
-	while (readb(sport->port.membase + MVF_UART_S1) & UART_S1_TDRE)
+	while (!(readb(sport->port.membase + MVF_UART_S1) & UART_S1_TDRE))
 		barrier();
 	
 	writeb(ch, sport->port.membase + MVF_UART_D);
@@ -660,6 +662,7 @@ mvf_console_setup(struct console *co,char *options)
 	int bits = 8;
 	int parity  = 'n';
 	int flow = 'n';
+
 
 	if (co->index == -1 || co->index >= ARRAY_SIZE(mvf_ports))
 		co->index = 0;
@@ -754,12 +757,6 @@ static int serial_mvf_probe(struct platform_device *pdev)
 	sport->port.iotype = UPIO_MEM;
 	/* Get IRQ 1 */
 	sport->port.irq = platform_get_irq(pdev, 0);
-	/* Is this Machine usr irqs?*/
-#if 0
-	sport->rxirq = platform_get_irq(pdev, 0);
-	sport->txirq = platform_get_irq(pdev, 1);
-	sport->rtsirq = platform_get_irq(pdev, 2);
-#endif
 	
 	sport->port.fifosize = 32;
 	sport->port.ops = &mvf_pops;
@@ -770,6 +767,8 @@ static int serial_mvf_probe(struct platform_device *pdev)
 	sport->timer.data     = (unsigned long)sport;
 
 	sport->clk = clk_get(&pdev->dev, "uart");
+;
+
 	if (IS_ERR(sport->clk)) {
 		ret = PTR_ERR(sport->clk);
 		goto unmap;
@@ -777,8 +776,8 @@ static int serial_mvf_probe(struct platform_device *pdev)
 	clk_enable(sport->clk);
 
 	sport->port.uartclk = clk_get_rate(sport->clk);
-
 	mvf_ports[pdev->id] = sport;
+
 
 	pdata = pdev->dev.platform_data;
 #if 0
