@@ -1629,15 +1629,6 @@ static struct clk ips_bus_clk = {
 #endif
 };
 
-static struct clk gpc_core_clk = {
-	__INIT_CLK_DEBUG(gpc_core_clk)
-	.parent = &ips_bus_clk,
-	.enable_reg = MXC_CCM_CCGR4,
-	.enable_shift = MXC_CCM_CCGRx_CG12_OFFSET,
-	.enable = _clk_enable,
-	.disable = _clk_disable,
-};
-
 static unsigned long _clk_snvs_get_rate(struct clk *clk)
 {
 	u32 reg, div;
@@ -3001,7 +2992,6 @@ static struct clk swo_clk = {
 	.set_parent = _clk_swo_set_parent,
 };
 
-/* FIXME Trace */
 static int _clk_trace_enable(struct clk *clk)
 {
 	u32 reg;
@@ -3142,7 +3132,14 @@ static struct clk spi1_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: USBC0 */
+static struct clk usbc0_clk = {
+	__INIT_CLK_DEBUG(usbc0_clk)
+	.parent = &ips_bus_clk, //FIXME
+	.enable_reg = MXC_CCM_CCGR1,
+	.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk pdb_clk = {
 	__INIT_CLK_DEBUG(pdb_clk)
@@ -3162,7 +3159,14 @@ static struct clk pit_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: ADC0 */
+static struct clk adc0_clk = {
+	__INIT_CLK_DEBUG(adc0_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR1,
+	.enable_shift = MXC_CCM_CCGRx_CG11_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk tcon0_clk = {
 	__INIT_CLK_DEBUG(tcon0_clk)
@@ -3200,7 +3204,14 @@ static struct clk lptmr_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: RLE */
+static struct clk rle_clk = {
+	__INIT_CLK_DEBUG(rle_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR2,
+	.enable_shift = MXC_CCM_CCGRx_CG2_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk iomux_clk = {
 	__INIT_CLK_DEBUG(iomux_clk)
@@ -3274,7 +3285,14 @@ static struct clk scsc_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: ASRC */
+static struct clk asrc_clk = {
+	__INIT_CLK_DEBUG(asrc_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk ewm_clk = {
 	__INIT_CLK_DEBUG(ewm_clk)
@@ -3303,7 +3321,14 @@ static struct clk i2c1_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: WKUP */
+static struct clk wkup_clk = {
+	__INIT_CLK_DEBUG(wkup_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGRx_CG10_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk ccm_clk = {
 	__INIT_CLK_DEBUG(ccm_clk)
@@ -3314,7 +3339,23 @@ static struct clk ccm_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: VREG_DIG */
+static struct clk gpc_clk = {
+	__INIT_CLK_DEBUG(gpc_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGRx_CG12_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk vreg_clk = {
+	__INIT_CLK_DEBUG(vreg_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGRx_CG13_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk src_clk = {
 	__INIT_CLK_DEBUG(src_clk)
@@ -3325,7 +3366,14 @@ static struct clk src_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: CMU */
+static struct clk cmu_clk = {
+	__INIT_CLK_DEBUG(cmu_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGRx_CG15_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk dma_mux2_clk = {
 	__INIT_CLK_DEBUG(dma_mux2_clk)
@@ -3373,8 +3421,50 @@ static struct clk uart5_clk = {
 	.disable = _clk_disable,
 };
 
-/* FIXME: SPI2,SPI3? - USB OTG1 */
-/* FIXME: ADC1 */
+static struct clk spi2_clk = {
+	__INIT_CLK_DEBUG(spi2_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR6,
+	.enable_shift = MXC_CCM_CCGRx_CG12_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk spi3_clk = {
+	__INIT_CLK_DEBUG(spi3_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR6,
+	.enable_shift = MXC_CCM_CCGRx_CG13_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk ddrmc_clk = {
+	__INIT_CLK_DEBUG(ddrmc_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR6,
+	.enable_shift = MXC_CCM_CCGRx_CG14_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk usbc1_clk = {
+	__INIT_CLK_DEBUG(usbc1_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR7,
+	.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk adc1_clk = {
+	__INIT_CLK_DEBUG(adc1_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR7,
+	.enable_shift = MXC_CCM_CCGRx_CG11_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
 
 static struct clk tcon1_clk = {
 	__INIT_CLK_DEBUG(tcon1_clk)
@@ -3408,6 +3498,42 @@ static struct clk viu3_clk = {
 	.parent = &ips_bus_clk,
 	.enable_reg = MXC_CCM_CCGR8,
 	.enable_shift = MXC_CCM_CCGRx_CG9_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk dac0_clk = {
+	__INIT_CLK_DEBUG(dac0_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR8,
+	.enable_shift = MXC_CCM_CCGRx_CG12_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk dac1_clk = {
+	__INIT_CLK_DEBUG(dac1_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR8,
+	.enable_shift = MXC_CCM_CCGRx_CG13_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk i2c2_clk = {
+	__INIT_CLK_DEBUG(i2c2_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG6_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+};
+
+static struct clk i2c3_clk = {
+	__INIT_CLK_DEBUG(i2c3_clk)
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR10,
+	.enable_shift = MXC_CCM_CCGRx_CG7_OFFSET,
 	.enable = _clk_enable,
 	.disable = _clk_disable,
 };
@@ -3494,7 +3620,97 @@ static struct clk eth_l2_sw_clk[] = {
 	},
 };
 
-/* FIXME: CAAM */
+static struct clk caam_clk[] = {
+	{
+	__INIT_CLK_DEBUG(caam_0_clk)
+	.id = 0,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[1],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_1_clk)
+	.id = 1,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[2],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_2_clk)
+	.id = 2,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG2_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[3],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_3_clk)
+	.id = 3,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG3_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[4],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_4_clk)
+	.id = 4,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG4_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[5],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_5_clk)
+	.id = 5,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG5_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[6],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_6_clk)
+	.id = 6,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG6_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[7],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_7_clk)
+	.id = 7,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG7_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.secondary = &caam_clk[8],
+	},
+	{
+	__INIT_CLK_DEBUG(caam_8_clk)
+	.id = 8,
+	.parent = &ips_bus_clk,
+	.enable_reg = MXC_CCM_CCGR11,
+	.enable_shift = MXC_CCM_CCGRx_CG8_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	},
+};
 
 #define _REGISTER_CLOCK(d, n, c) \
 	{ \
@@ -3539,7 +3755,6 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "cm4_clk", cm4_clk),
 	_REGISTER_CLOCK(NULL, "flex_bus_clk", flex_bus_clk),
 	_REGISTER_CLOCK(NULL, "ips_bus_clk", ips_bus_clk),
-	_REGISTER_CLOCK(NULL, "gpc_core_clk", gpc_core_clk),
 	_REGISTER_CLOCK(NULL, "snvs_clk", snvs_clk),
 	_REGISTER_CLOCK(NULL, "wdog_snvs_clk", wdog_snvs_clk),
 	_REGISTER_CLOCK(NULL, "can0_root_clk", can0_clk_root),
@@ -3587,12 +3802,15 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("mvf-uart.3", NULL, uart3_clk),
 	_REGISTER_CLOCK(NULL, "spi0_clk", spi0_clk),
 	_REGISTER_CLOCK(NULL, "spi1_clk", spi1_clk),
+	_REGISTER_CLOCK(NULL, "usbc0_clk", usbc0_clk),
 	_REGISTER_CLOCK(NULL, "pdb_clk", pdb_clk),
 	_REGISTER_CLOCK(NULL, "pit_clk", pit_clk),
+	_REGISTER_CLOCK(NULL, "adc0_clk", adc0_clk),
 	_REGISTER_CLOCK(NULL, "tcon0_clk", tcon0_clk),
 	_REGISTER_CLOCK(NULL, "wdog_a5_clk", wdog_a5_clk),
 	_REGISTER_CLOCK(NULL, "wdog_m4_clk", wdog_m4_clk),
 	_REGISTER_CLOCK(NULL, "lptmr_clk", lptmr_clk),
+	_REGISTER_CLOCK(NULL, "rle_clk", rle_clk),
 	_REGISTER_CLOCK(NULL, "iomux_clk", iomux_clk),
 	_REGISTER_CLOCK(NULL, "port_a_mux_clk", port_a_mux_clk),
 	_REGISTER_CLOCK(NULL, "port_b_mux_clk", port_b_mux_clk),
@@ -3601,21 +3819,36 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "port_e_mux_clk", port_e_mux_clk),
 	_REGISTER_CLOCK(NULL, "anadig_clk", anadig_clk),
 	_REGISTER_CLOCK(NULL, "scsc_clk", scsc_clk),
+	_REGISTER_CLOCK(NULL, "asrc_clk", asrc_clk),
 	_REGISTER_CLOCK(NULL, "ewm_clk", ewm_clk),
 	_REGISTER_CLOCK(NULL, "i2c0_clk", i2c0_clk),
 	_REGISTER_CLOCK(NULL, "i2c1_clk", i2c1_clk),
+	_REGISTER_CLOCK(NULL, "wkup_clk", wkup_clk),
 	_REGISTER_CLOCK(NULL, "ccm_clk", ccm_clk),
+	_REGISTER_CLOCK(NULL, "gpc_clk", gpc_clk),
+	_REGISTER_CLOCK(NULL, "vreg_clk", vreg_clk),
 	_REGISTER_CLOCK(NULL, "src_clk", src_clk),
+	_REGISTER_CLOCK(NULL, "cmu_clk", cmu_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix2_clk", dma_mux2_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix3_clk", dma_mux3_clk),
 	_REGISTER_CLOCK(NULL, "ocotp_clk", ocotp_clk),
 	_REGISTER_CLOCK("mvf-uart.4", NULL, uart4_clk),
 	_REGISTER_CLOCK("mvf-uart.5", NULL, uart5_clk),
+	_REGISTER_CLOCK(NULL, "spi2_clk", spi2_clk),
+	_REGISTER_CLOCK(NULL, "spi3_clk", spi3_clk),
+	_REGISTER_CLOCK(NULL, "ddrmc_clk", ddrmc_clk),
+	_REGISTER_CLOCK(NULL, "usbc1_clk", usbc1_clk),
+	_REGISTER_CLOCK(NULL, "adc1_clk", adc1_clk),
 	_REGISTER_CLOCK(NULL, "tcon1_clk", tcon1_clk),
 	_REGISTER_CLOCK(NULL, "seg_lcd_clk", seg_lcd_clk),
 	_REGISTER_CLOCK(NULL, "video_dec_clk", video_dec_clk),
 	_REGISTER_CLOCK(NULL, "viu3_clk", viu3_clk),
+	_REGISTER_CLOCK(NULL, "dac0_clk", dac0_clk),
+	_REGISTER_CLOCK(NULL, "dac1_clk", dac1_clk),
+	_REGISTER_CLOCK(NULL, "i2c2_clk", i2c2_clk),
+	_REGISTER_CLOCK(NULL, "i2c3_clk", i2c3_clk),
 	_REGISTER_CLOCK(NULL, "eth_l2_sw_clk", eth_l2_sw_clk[0]),
+	_REGISTER_CLOCK(NULL, "caam_clk", caam_clk[0]),
 	_REGISTER_CLOCK(NULL, "anaclk_1", anaclk_1),
 	_REGISTER_CLOCK(NULL, "audio_ext", audio_ext),
 	_REGISTER_CLOCK(NULL, "enet_ext", enet_ext),
