@@ -174,17 +174,31 @@ static void mvf_set_mode(enum clock_event_mode mode,
 /*
  * IRQ handler for the timer
  */
+#if 1
+#define COUNT_UP_VAL	660000
+static unsigned long total_cnt = 0;
+static unsigned long long old_jiff = 0;
+#endif
 static irqreturn_t mvf_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = &clockevent_mvf;
 	uint32_t tstat;
+	unsigned long reg;
 
 	tstat = __raw_readl(timer_base + PIT_TFLG(TIMER_CH));
 	if ( tstat ) {
 		__raw_writel(tstat, timer_base + PIT_TFLG(TIMER_CH));
 		gpt_irq_acknowledge();
 		evt->event_handler(evt);
-		jiffies++;
+#if 1
+		reg = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
+		total_cnt += reg;
+		if (total_cnt >= COUNT_UP_VAL) {
+			total_cnt = 0;
+			jiffies++;
+			//printk("jiffies = %ld\n",jiffies);
+		}
+#endif
 		return IRQ_HANDLED;
 	}
 	//	/* DEBUG */ printk("DBG: %s[%d]: NONE Exit\n",__func__,__LINE__);
