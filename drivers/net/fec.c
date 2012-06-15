@@ -71,7 +71,7 @@
 #define FEC_QUIRK_SWAP_FRAME		(1 << 1)
 
 static struct platform_device_id fec_devtype[] = {
-#ifdef CONFIG_SOC_IMX6Q
+#if defined(CONFIG_SOC_IMX6Q) || defined(CONFIG_SOC_VF6XX)
 	{
 		.name = DRIVER_NAME,
 		.driver_data = FEC_QUIRK_ENET_MAC,
@@ -149,7 +149,7 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
 #define FEC_ENET_HOLD_TIME     ((uint)0x100)  /* 2 internal clock cycle*/
 
 #if defined(CONFIG_FEC_1588) && (defined(CONFIG_ARCH_MX28) || \
-				defined(CONFIG_ARCH_MX6))
+				defined(CONFIG_ARCH_MX6)) || defined(CONFIG_SOC_VF6XX)
 #define FEC_DEFAULT_IMASK (FEC_ENET_TXF | FEC_ENET_RXF | FEC_ENET_MII | \
 				FEC_ENET_TS_AVAIL | FEC_ENET_TS_TIMER)
 #else
@@ -280,7 +280,6 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		/* Link is down or autonegotiation is in progress. */
 		return NETDEV_TX_BUSY;
 	}
-
 	spin_lock_irqsave(&fep->hw_lock, flags);
 	/* Fill in a Tx ring entry */
 	bdp = fep->cur_tx;
@@ -370,7 +369,7 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	fep->cur_tx = bdp;
 
 	spin_unlock_irqrestore(&fep->hw_lock, flags);
-
+	
 	return NETDEV_TX_OK;
 }
 
@@ -617,6 +616,7 @@ fec_enet_interrupt(int irq, void *dev_id)
 	do {
 		int_events = readl(fep->hwp + FEC_IEVENT);
 		writel(int_events, fep->hwp + FEC_IEVENT);
+/* KATASU */ //if( int_events && (int_events !=0x800000)) printk("DBG: %s[%x]:Irq\n",__func__,int_events);
 
 		if (int_events & FEC_ENET_RXF) {
 			ret = IRQ_HANDLED;
@@ -902,11 +902,15 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	/*
 	 * Set MII speed to 2.5 MHz (= clk_get_rate() / 2 * phy_speed)
 	 */
+#if defined(CONFIG_SOC_VF6XX)
+	fep->phy_speed = 0x09<<1;
+#else
 	fep->phy_speed = DIV_ROUND_UP(clk_get_rate(fep->clk),
 					(FEC_ENET_MII_CLK << 2)) << 1;
+#endif
 
 	/* set hold time to 2 internal clock cycle */
-	if (cpu_is_mx6())
+	if (cpu_is_mx6() || cpu_is_vf6xx())
 		fep->phy_speed |= FEC_ENET_HOLD_TIME;
 
 	writel(fep->phy_speed, fep->hwp + FEC_MII_SPEED);
@@ -1427,7 +1431,7 @@ fec_restart(struct net_device *dev, int duplex)
 				fep->ptimer_present = 0;
 				reg = 0x0;
 			} else
-#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6) || defined(CONFIG_ARCH_VF600)
+#if defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6) || defined(CONFIG_SOC_VF6XX)
 				reg = 0x00000010;
 #else
 				reg = 0x0;
@@ -1457,7 +1461,7 @@ fec_restart(struct net_device *dev, int duplex)
 	/* ENET enable */
 	val = reg | (0x1 << 1);
 
-#ifndef CONFIG_ARCH_VF600
+#ifndef CONFIG_SOC_VF6XX 
 	/* if phy work at 1G mode, set ENET RGMII speed to 1G */
 	if (fep->phy_dev && (fep->phy_dev->supported &
 		(SUPPORTED_1000baseT_Half | SUPPORTED_1000baseT_Full)) &&
@@ -1465,7 +1469,7 @@ fec_restart(struct net_device *dev, int duplex)
 		fep->phy_dev->speed == SPEED_1000)
 		val |= (0x1 << 5);
 #endif
-	if (cpu_is_mx6()) {
+	if (cpu_is_mx6()||cpu_is_vf6xx()) {
 		/* enable endian swap */
 		val |= (0x1 << 8);
 		/* enable ENET store and forward mode */
@@ -1496,7 +1500,7 @@ fec_stop(struct net_device *dev)
 	writel(1, fep->hwp + FEC_ECNTRL);
 	udelay(10);
 
-	if (cpu_is_mx6())
+	if (cpu_is_mx6()||cpu_is_vf6xx())
 		/* FIXME: we have to enable enet to keep mii interrupt works. */
 		writel(2, fep->hwp + FEC_ECNTRL);
 
@@ -1537,7 +1541,6 @@ fec_probe(struct platform_device *pdev)
 
 	fep->hwp = ioremap(r->start, resource_size(r));
 	fep->pdev = pdev;
-
 	if (!fep->hwp) {
 		ret = -ENOMEM;
 		goto failed_ioremap;
@@ -1546,9 +1549,12 @@ fec_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ndev);
 
 	pdata = pdev->dev.platform_data;
+#if defined(CONFIG_SOC_VF6XX)
+	fep->phy_interface=PHY_INTERFACE_MODE_RMII;
+#else
 	if (pdata)
 		fep->phy_interface = pdata->phy;
-
+#endif
 	/* This device has up to three irqs on some platforms */
 	for (i = 0; i < 3; i++) {
 		irq = platform_get_irq(pdev, i);

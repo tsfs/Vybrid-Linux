@@ -371,6 +371,12 @@ static noinline void __init_refok rest_init(void)
 	schedule();
 	preempt_disable();
 
+#if 0
+	while(1) {
+		/* DEBUG Katsu */ printk("DBG: %s[%d]:****** %ld ***********\n",__func__,__LINE__, jiffies );
+		mdelay(1000);
+	}
+#endif
 	/* Call into cpu_idle with preempt disabled */
 	cpu_idle();
 }

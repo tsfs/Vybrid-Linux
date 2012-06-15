@@ -110,8 +110,7 @@ static int cpu_op_nr;
 static unsigned long internal_high_reference, internal_low_reference;
 static unsigned long external_high_reference, external_low_reference;
 static unsigned long anaclk_1_reference, audio_ext_clk_reference;
-static unsigned long enet_ext_clk_reference, enet_ts_clk_reference;
-static unsigned long usb_clk_reference;
+static unsigned long enet_ts_clk_reference, usb_clk_reference;
 
 /* For MX 6DL/S, Video PLL may be used by synchronous display devices,
  * such as HDMI or LVDS, and also by the EPDC.  If EPDC is in use,
@@ -336,13 +335,7 @@ static int _clk_audio_ext_set_rate(struct clk *clk, unsigned long rate)
 
 static unsigned long _clk_enet_ext_get_rate(struct clk *clk)
 {
-	return enet_ext_clk_reference;
-}
-
-static int _clk_enet_ext_set_rate(struct clk *clk, unsigned long rate)
-{
-	enet_ext_clk_reference = rate;
-	return 0;
+	return 50000000;
 }
 
 static unsigned long _clk_enet_ts_get_rate(struct clk *clk)
@@ -400,7 +393,6 @@ static struct clk audio_ext = {
 static struct clk enet_ext = {
 	__INIT_CLK_DEBUG(enet_ext)
 	.get_rate = _clk_enet_ext_get_rate,
-	.set_rate = _clk_enet_ext_set_rate,
 };
 
 static struct clk enet_ts = {
@@ -1292,15 +1284,12 @@ static int _clk_enet_enable(struct clk *clk)
 	reg |= ANADIG_PLL_ENABLE;
 	__raw_writel(reg, PLL5_ENET_BASE_ADDR);
 
-	_clk_enable(clk);
 	return 0;
 }
 
 static void _clk_enet_disable(struct clk *clk)
 {
 	unsigned int reg;
-
-	_clk_disable(clk);
 
 	/* Enable ENET ref clock */
 	reg = __raw_readl(PLL5_ENET_BASE_ADDR);
@@ -1366,8 +1355,6 @@ static struct clk enet_clk = {
 	__INIT_CLK_DEBUG(enet_clk)
 	.id = 0,
 	.parent = &pll5_enet_main_clk,
-	.enable_reg = MXC_CCM_CCGR1,
-	.enable_shift = MXC_CCM_CCGRx_CG5_OFFSET,
 	.enable = _clk_enet_enable,
 	.disable = _clk_enet_disable,
 #if 0	//we do not support enet freq
@@ -2309,10 +2296,11 @@ static int _clk_enet_rmii_set_parent(struct clk *clk, struct clk *parent)
 
 static struct clk enet_rmii_clk = {
 	__INIT_CLK_DEBUG(enet_rmii_clk)
-	.parent = &enet_ext,
+	.parent = &enet_clk,
+	//.parent = &enet_div2_clk,
 	.enable = _clk_enet_rmii_enable,
 	.disable = _clk_enet_rmii_disable,
-#if 0	//we do not support to change enet freq
+#if 1 //FIXME 0	//we do not support to change enet freq
 	.set_parent = _clk_enet_rmii_set_parent,
 #endif
 };
@@ -2371,6 +2359,30 @@ static struct clk enet_ts_clk = {
 	.disable = _clk_enet_ts_disable,
 #if 0	//we do not support to change enet freq
 	.set_parent = _clk_enet_ts_set_parent,
+#endif
+};
+
+static struct clk fec0_clk = {
+	__INIT_CLK_DEBUG(fec0_rmii_clk)
+	.parent = &enet_rmii_clk,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.enable_reg = MXC_CCM_CCGR9,
+	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
+#ifdef CONFIG_FEC_1588
+	.secondary = &enet_ts_clk,
+#endif
+};
+
+static struct clk fec1_clk = {
+	__INIT_CLK_DEBUG(fec1_rmii_clk)
+	.parent = &enet_rmii_clk,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
+	.enable_reg = MXC_CCM_CCGR9,
+	.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
+#ifdef CONFIG_FEC_1588
+	.secondary = &enet_ts_clk,
 #endif
 };
 
@@ -3775,14 +3787,12 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "ftm3_clk", ftm3_clk),
 	_REGISTER_CLOCK(NULL, "nfc_clk_root", nfc_clk_root),
 	_REGISTER_CLOCK(NULL, "nfc_clk", nfc_clk[0]),
-#if 1
-	_REGISTER_CLOCK(NULL, "fec_clk", enet_clk), //FIXME
-#else
-	_REGISTER_CLOCK("fec.0", NULL, enet_clk), //FIXME
-#endif
+	_REGISTER_CLOCK(NULL, "enet_clk", enet_clk),
 	_REGISTER_CLOCK(NULL, "enet_div2_clk", enet_div2_clk),
 	_REGISTER_CLOCK(NULL, "enet_rmii_clk", enet_rmii_clk),
 	_REGISTER_CLOCK(NULL, "enet_ts_clk", enet_ts_clk),
+	_REGISTER_CLOCK(NULL, "fec_clk", fec0_clk),
+	_REGISTER_CLOCK(NULL, "fec1_clk", fec1_clk),
 	_REGISTER_CLOCK(NULL, "sdhc0_clk", sdhc0_clk),
 	_REGISTER_CLOCK(NULL, "sdhc1_clk", sdhc1_clk),
 	_REGISTER_CLOCK(NULL, "dcu0_clk_root", dcu0_clk_root),
@@ -4018,6 +4028,27 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 	clk_enable(&ips_bus_clk);
 	clk_enable(&ddrc_clk);
 
+#if 1 //DEBUG
+	if (1) {
+		struct clk *old_parent = clk_get_parent(&enet_rmii_clk);
+#if 0
+		if (old_parent != &enet_clk)  {
+			clk_set_parent(&enet_rmii_clk, &enet_clk);
+			printk("*** rmii_clk:%ldHz -> %ldHz\n",
+				clk_get_rate(old_parent), clk_get_rate(&fec0_clk));
+#else
+		if (old_parent != &enet_ext)  {
+			clk_set_parent(&enet_rmii_clk, &enet_ext);
+			printk("*** rmii_clk:%ldHz -> %ldHz\n",
+				clk_get_rate(old_parent), clk_get_rate(&fec0_clk));
+#endif
+		} else {
+			printk("*** rmii_clk:%ldHz\n", clk_get_rate(&enet_rmii_clk));
+		}
+		printk("*** fec0_clk:%ldHz\n", clk_get_rate(&fec0_clk));
+	}
+#endif
+
 	/* Disable un-necessary PFDs & PLLs */
 	if (pll2_pfd1.usecount == 0)
 		pll2_pfd1.disable(&pll2_pfd1);
@@ -4028,14 +4059,6 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 	if (pll2_pfd4.usecount == 0)
 		pll2_pfd4.disable(&pll2_pfd4);
 
-#if !defined(CONFIG_FEC_1588)
-	pll3_pfd1.disable(&pll3_pfd1);
-	pll3_pfd2.disable(&pll3_pfd2);
-	pll3_pfd3.disable(&pll3_pfd3);
-	pll3_pfd4.disable(&pll3_pfd4);
-
-	pll3_480_usb1_main_clk.disable(&pll3_480_usb1_main_clk);
-#endif
 	pll4_audio_main_clk.disable(&pll4_audio_main_clk);
 	pll6_video_main_clk.disable(&pll6_video_main_clk);
 	pll_480_usb2_main_clk.disable(&pll_480_usb2_main_clk);

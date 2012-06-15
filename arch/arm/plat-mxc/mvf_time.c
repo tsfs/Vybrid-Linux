@@ -124,6 +124,8 @@ static void mvf_set_mode(enum clock_event_mode mode,
 	 * The timer interrupt generation is disabled at least
 	 * for enough time to call mvf_set_next_event()
 	 */
+	/* DEBUG */ printk("DBG: %s[%d]: Start Mode = %x, jiffies = %ld\n",__func__,__LINE__, mode,jiffies);
+
 	local_irq_save(flags);
 
 	/* Disable interrupt in GPT module */
@@ -166,6 +168,7 @@ static void mvf_set_mode(enum clock_event_mode mode,
 		/* Left event sources disabled, no more interrupts appear */
 		break;
 	}
+	/* DEBUG */ printk("DBG: %s[%d]: Start jiffies = %ld\n",__func__,__LINE__, jiffies);
 }
 
 /*
@@ -181,16 +184,18 @@ static irqreturn_t mvf_timer_interrupt(int irq, void *dev_id)
 		__raw_writel(tstat, timer_base + PIT_TFLG(TIMER_CH));
 		gpt_irq_acknowledge();
 		evt->event_handler(evt);
+		jiffies++;
 		return IRQ_HANDLED;
 	}
+	//	/* DEBUG */ printk("DBG: %s[%d]: NONE Exit\n",__func__,__LINE__);
 	return IRQ_NONE;
 }
 
 static int mvf_set_next_event(unsigned long evt,
 			      struct clock_event_device *unused)
 {
-	unsigned long tcmp,tmp;
-
+#if 1
+	unsigned long tcmp;
 	tcmp = evt;
 	/* STOP Time */
 	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
@@ -201,12 +206,26 @@ static int mvf_set_next_event(unsigned long evt,
 	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
 				 | (PIT_TCTRL_TEN), 
 				 timer_base + PIT_TCTRL(TIMER_CH));
-#if 0
-	while(1) {
-		tmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
-		printk("val = %08lx\n",tmp);
-	}
+#else
+	unsigned long tcmp,cval;
+	unsigned long oval,nval;
+	tcmp = evt;
+	cval = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
+	oval = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
+	/* STOP Time */
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 & ~(PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
+	__raw_writel(tcmp, timer_base + PIT_LDVAL(TIMER_CH));
+	/* Start Timer */
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 | (PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
 	
+	__raw_writel(tcmp+cval, timer_base + PIT_LDVAL(TIMER_CH));
+	nval = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
+	tcmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
+	//	printk("DEBUG: KATSU: evt=%lud, oldval = %lud, nval = %lud,cval = %lud,tcmp = %lud\n",evt,oval,nval,cval,tcmp);
 #endif
 	return 0;
 
@@ -250,8 +269,6 @@ static int __init mvf_clockevent_init(struct clk *timer_clk)
 
 void __init mvf_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 {
-	uint32_t tctrl_val;
-	u32 reg;
 
 #if 1 /* Clock is fix to 50MHz */
 	clk_enable(timer_clk);

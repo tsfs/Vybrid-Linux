@@ -117,13 +117,24 @@ typedef u64 iomux_vmvf_cfg_t;
 #define MUX_CTL_PAD_DSE_25ohm		(6 << 6)
 #define MUX_CTL_PAD_DSE_20ohm		(7 << 6) /* 34 Ohm if pad is DDR */
 
+#if 0
 #define MUX_CTL_PAD_PUS_100K_DOWN	(0 << 4 | MUX_CTL_PAD_PUE)
 #define MUX_CTL_PAD_PUS_47K_UP		(1 << 4 | MUX_CTL_PAD_PUE)
 #define MUX_CTL_PAD_PUS_100K_UP		(2 << 4 | MUX_CTL_PAD_PUE)
 #define MUX_CTL_PAD_PUS_22K_UP		(3 << 4 | MUX_CTL_PAD_PUE)
+#else
+#define MUX_CTL_PAD_PUS_100K_DOWN	(0 << 4)
+#define MUX_CTL_PAD_PUS_47K_UP		(1 << 4)
+#define MUX_CTL_PAD_PUS_100K_UP		(2 << 4)
+#define MUX_CTL_PAD_PUS_22K_UP		(3 << 4)
+#endif
 
 #define MUX_CTL_PAD_PKE			(1 << 3)
+#if 0
 #define MUX_CTL_PAD_PUE			(1 << 2 | MUX_CTL_PAD_PKE)
+#else
+#define MUX_CTL_PAD_PUE			(1 << 2)
+#endif
 
 #define MUX_CTL_PAD_OBE			(1 << 1)
 #define MUX_CTL_PAD_IBE			(1 << 0)

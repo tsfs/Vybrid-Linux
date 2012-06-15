@@ -52,6 +52,7 @@ static void tick_do_update_jiffies64(ktime_t now)
 	 * Do a quick check without holding xtime_lock:
 	 */
 	delta = ktime_sub(now, last_jiffies_update);
+	//	/* DEBUG */ printk("delta.vt64 = %lld, tick_period.vt64 = %lld\n",delta.tv64 ,tick_period.tv64);
 	if (delta.tv64 < tick_period.tv64)
 		return;
 

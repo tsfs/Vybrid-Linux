@@ -50,7 +50,7 @@
 #define SERIAL_MVF_MAJOR        207
 #define MINOR_START	        16
 #define DRIVER_NAME  "MVF-uart"
-#define DEV_NAME	 "ttymvf"
+#define DEV_NAME	 "ttyvmvf"
 
 #define UART_NR   6
 

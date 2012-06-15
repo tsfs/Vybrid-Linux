@@ -32,7 +32,7 @@
 static int fec_get_mac_addr(unsigned char *mac)
 {
 	unsigned int value;
-
+#if 0
 #if 1
 	value = 0x01;
 #endif
@@ -44,6 +44,13 @@ static int fec_get_mac_addr(unsigned char *mac)
 	//value = readl(MVF_IO_ADDRESS(MVF_OTP_CTRL_BASE_ADDR) + HW_OCOTP_MACn(1));
 	mac[1] = value & 0xff;
 	mac[0] = (value >> 8) & 0xff;
+#endif
+	mac[5]=0x00;
+	mac[4]=0x21;
+	mac[3]=0x97;
+	mac[2]=0x09;
+	mac[1]=0xc6;
+	mac[0]=0xae;
 
 	return 0;
 }
