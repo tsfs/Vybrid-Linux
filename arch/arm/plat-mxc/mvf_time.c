@@ -25,6 +25,12 @@
 #include <linux/irq.h>
 #include <linux/clockchips.h>
 #include <linux/clk.h>
+#include <linux/time.h>
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/profile.h>
+#include <linux/sched.h>
+
 
 #include <mach/hardware.h>
 #include <asm/sched_clock.h>
@@ -59,6 +65,7 @@
 
 static struct clock_event_device clockevent_mvf;
 static enum clock_event_mode clockevent_mode = CLOCK_EVT_MODE_UNUSED;
+static unsigned long ticks_per_jiffy;
 
 static void __iomem *timer_base;
 
@@ -66,6 +73,7 @@ static inline void gpt_irq_disable(void)
 {
 	unsigned int tmp;
 
+	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tmp = __raw_readl(timer_base + PIT_TCTRL(TIMER_CH));
 	__raw_writel(tmp & ~PIT_TCTRL_TIE , timer_base + PIT_TCTRL(TIMER_CH));
 }
@@ -74,6 +82,7 @@ static inline void gpt_irq_enable(void)
 {
 	unsigned int tmp;
 
+	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tmp = __raw_readl(timer_base + PIT_TCTRL(TIMER_CH));
 	__raw_writel(tmp | PIT_TCTRL_TIE , timer_base + PIT_TCTRL(TIMER_CH));
 }
@@ -86,19 +95,31 @@ static void gpt_irq_acknowledge(void)
 }
 
 static void __iomem *sched_clock_reg;
+static void __iomem *sched_clock_ld;
 
 static DEFINE_CLOCK_DATA(cd);
 unsigned long long notrace sched_clock(void)
 {
-	cycle_t cyc = sched_clock_reg ? __raw_readl(sched_clock_reg) : 0;
-
+	cycle_t cyc = sched_clock_reg ? ((u32)~0 
+									 - __raw_readl(sched_clock_reg)) : 0;
 	return cyc_to_sched_clock(&cd, cyc, (u32)~0);
 }
 
 static void notrace mvf_update_sched_clock(void)
 {
-	cycle_t cyc = sched_clock_reg ? __raw_readl(sched_clock_reg) : 0;
+	cycle_t cyc = sched_clock_reg ? ((u32)~0  
+									 - __raw_readl(sched_clock_reg)) : 0;
 	update_sched_clock(&cd, cyc, (u32)~0);
+}
+
+
+cycle_t clocksource_mmio_readl_pit(struct clocksource *c)
+{
+	cycle_t cyc;
+	cyc = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH)) -  
+		__raw_readl(timer_base + PIT_CVAL(TIMER_CH));
+	
+	return cyc;
 }
 
 static int __init mvf_clocksource_init(struct clk *timer_clk)
@@ -107,10 +128,21 @@ static int __init mvf_clocksource_init(struct clk *timer_clk)
 	void __iomem *reg = timer_base + PIT_CVAL(TIMER_CH);
 
 	sched_clock_reg = reg;
+	sched_clock_ld = timer_base + PIT_LDVAL(TIMER_CH);
+	ticks_per_jiffy = DIV_ROUND_CLOSEST(c,HZ);
 
 	init_sched_clock(&cd, mvf_update_sched_clock, 32, c);
+#if 1
+#if 0
 	return clocksource_mmio_init(reg, "mvf_timer1", c, 200, 32,
-			clocksource_mmio_readl_up);
+			clocksource_mmio_readl_down);
+#else
+	return clocksource_mmio_init(reg, "mvf_timer1", c, 200, 32,
+			clocksource_mmio_readl_pit);
+#endif
+#else
+	return 0;
+#endif
 }
 
 
@@ -124,7 +156,6 @@ static void mvf_set_mode(enum clock_event_mode mode,
 	 * The timer interrupt generation is disabled at least
 	 * for enough time to call mvf_set_next_event()
 	 */
-	/* DEBUG */ printk("DBG: %s[%d]: Start Mode = %x, jiffies = %ld\n",__func__,__LINE__, mode,jiffies);
 
 	local_irq_save(flags);
 
@@ -148,8 +179,13 @@ static void mvf_set_mode(enum clock_event_mode mode,
 	
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
+		local_irq_save(flags);
+		gpt_irq_enable();
+		local_irq_restore(flags);
+#if 0
 		printk(KERN_ERR"mvf_set_mode: Periodic mode is not "
 			   "supported for MVF\n");
+#endif
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		/*
@@ -168,40 +204,31 @@ static void mvf_set_mode(enum clock_event_mode mode,
 		/* Left event sources disabled, no more interrupts appear */
 		break;
 	}
-	/* DEBUG */ printk("DBG: %s[%d]: Start jiffies = %ld\n",__func__,__LINE__, jiffies);
+	/* DEBUG */ printk("DBG: %s[%d]: Start[%d] jiffies = %ld\n",__func__,__LINE__,mode, jiffies);
 }
 
 /*
  * IRQ handler for the timer
  */
-#if 1
-#define COUNT_UP_VAL	660000
-static unsigned long total_cnt = 0;
-static unsigned long long old_jiff = 0;
-#endif
+
 static irqreturn_t mvf_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = &clockevent_mvf;
 	uint32_t tstat;
 	unsigned long reg;
 
+	//	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tstat = __raw_readl(timer_base + PIT_TFLG(TIMER_CH));
 	if ( tstat ) {
 		__raw_writel(tstat, timer_base + PIT_TFLG(TIMER_CH));
 		gpt_irq_acknowledge();
-		evt->event_handler(evt);
 #if 1
-		reg = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
-		total_cnt += reg;
-		if (total_cnt >= COUNT_UP_VAL) {
-			total_cnt = 0;
-			jiffies++;
-			//printk("jiffies = %ld\n",jiffies);
-		}
+		evt->event_handler(evt);
+#else
+        xtime_update(1);
 #endif
 		return IRQ_HANDLED;
 	}
-	//	/* DEBUG */ printk("DBG: %s[%d]: NONE Exit\n",__func__,__LINE__);
 	return IRQ_NONE;
 }
 
@@ -210,16 +237,18 @@ static int mvf_set_next_event(unsigned long evt,
 {
 #if 1
 	unsigned long tcmp;
-	tcmp = evt;
+	tcmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
 	/* STOP Time */
 	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
 				 & ~(PIT_TCTRL_TEN), 
 				 timer_base + PIT_TCTRL(TIMER_CH));
-	__raw_writel(tcmp, timer_base + PIT_LDVAL(TIMER_CH));
+	__raw_writel(tcmp - evt, timer_base + PIT_LDVAL(TIMER_CH));
+	__raw_writel(evt, timer_base + PIT_LDVAL(TIMER_CH));
 	/* Start Timer */
 	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
 				 | (PIT_TCTRL_TEN), 
 				 timer_base + PIT_TCTRL(TIMER_CH));
+	//	printk("tcmp = %ld, evt = %ld\n",tcmp,evt);
 #else
 	unsigned long tcmp,cval;
 	unsigned long oval,nval;
@@ -255,7 +284,8 @@ static struct irqaction mvf_timer_irq = {
 
 static struct clock_event_device clockevent_mvf = {
 	.name		= "mvf_timer1",
-	.features	= CLOCK_EVT_FEAT_ONESHOT,
+	.features	= CLOCK_EVT_FEAT_PERIODIC,
+	//	.features	= CLOCK_EVT_FEAT_ONESHOT,
 	.shift		= 32,
 	.set_mode	= mvf_set_mode,
 	.set_next_event	= mvf_set_next_event,
@@ -287,7 +317,7 @@ void __init mvf_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 #if 1 /* Clock is fix to 50MHz */
 	clk_enable(timer_clk);
 #endif
-	printk("PIT base = 0x%08lx",(unsigned long)base);
+	//	printk("PIT base = 0x%08lx",(unsigned long)base);
 	timer_base = base;
 
 	/*
@@ -303,4 +333,18 @@ void __init mvf_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 
 	/* Make irqs happen */
 	setup_irq(irq, &mvf_timer_irq);
+
+	/* STOP Time */
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 & ~(PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
+	
+	__raw_writel(ticks_per_jiffy, timer_base + PIT_LDVAL(TIMER_CH));
+	gpt_irq_enable();
+	/* Start Timer */
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 | (PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
+	
+
 }
