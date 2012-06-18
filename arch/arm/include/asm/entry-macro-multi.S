@@ -33,6 +33,13 @@
 	bne	do_local_timer
 #endif
 #endif
+
+#ifdef CONFIG_ARCH_MVF /* MVF Global Timer Support*/
+	test_for_gtirq r0, r6, r5, lr
+	movne	r0, sp
+	adrne	lr, BSYM(1b)
+	bne	do_global_timer
+#endif
 9997:
 	.endm
 

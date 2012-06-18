@@ -3072,6 +3072,16 @@ static struct clk trace_clk = {
 	.set_parent = _clk_trace_set_parent,
 };
 
+static struct clk ca5_scu_clk = {
+	__INIT_CLK_DEBUG(ca5_scu_clk)
+	.parent = &plat_bus_clk,
+};
+
+static struct clk twd_clk = {
+	__INIT_CLK_DEBUG(twd_clk)
+	.parent = &ca5_scu_clk,
+};
+
 static struct clk dma_mux0_clk = {
 	__INIT_CLK_DEBUG(dma_mux0_clk)
 	.parent = &ips_bus_clk,
@@ -3804,6 +3814,8 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK(NULL, "gpu_clk", gpu_clk),
 	_REGISTER_CLOCK(NULL, "swo_clk", swo_clk),
 	_REGISTER_CLOCK(NULL, "trace_clk", trace_clk),
+	_REGISTER_CLOCK(NULL, "ca5_scu_clk", ca5_scu_clk),
+	_REGISTER_CLOCK("smp_twd", NULL, twd_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix0_clk", dma_mux0_clk),
 	_REGISTER_CLOCK(NULL, "dma_mix1_clk", dma_mux1_clk),
 	_REGISTER_CLOCK("mvf-uart.0", NULL, uart0_clk),
@@ -4250,14 +4262,11 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 		     3 << MXC_CCM_CCGRx_CG8_OFFSET,
 		     MXC_CCM_CCGR11);
 
-#if 1 //FIXME
-	base = ioremap(MVF_PIT_BASE_ADDR, SZ_4K);
-	mvf_timer_init(&pit_clk, base, MXC_INT_PIT);
-#endif
+	base = MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR + 0x200);
+	mvf_timer_init(&ca5_scu_clk, base, IRQ_GLOBALTIMER);
 
 	lp_high_freq = 0;
 	lp_med_freq = 0;
 
 	return 0;
-
 }

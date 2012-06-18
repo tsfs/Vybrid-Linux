@@ -62,16 +62,15 @@ void mvf_init_irq(void)
 		__raw_writew(0x01,mscm_base + 0x880 + (i<<1));
 	}
 
-	/* start offset if private timer irq id, which is 29.
+	/* start offset if global timer irq id, which is 27.
 	 * ID table:
 	 * Global timer, PPI -> ID27
-	 * A legacy nFIQ, PPI -> ID28
-	 * Private timer, PPI -> ID29
+	 * Private(Local) timer, PPI -> ID29
 	 * Watchdog timers, PPI -> ID30
 	 * A legacy nIRQ, PPI -> ID31
 	 */
-	gic_init(0, 29, MVF_IO_ADDRESS(MVF_CA5_INTD_BASE_ADDR),
-		MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR + 0x100));	//FIXME
+	gic_init(0, 27, MVF_IO_ADDRESS(MVF_CA5_INTD_BASE_ADDR),
+		MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR + 0x100));
 
 #if 0
 	if (enable_wait_mode) {
