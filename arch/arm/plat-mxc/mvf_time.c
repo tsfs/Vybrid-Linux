@@ -17,6 +17,7 @@
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
 #include <linux/err.h>
+#include <linux/seq_file.h>
 
 #include <asm/sched_clock.h>
 #include <asm/hardware/gic.h>
@@ -131,53 +132,43 @@ static int mvf_set_next_event(unsigned long evt,
 	return 0;
 }
 
-#if 1
 asmlinkage void __exception_irq_entry do_global_timer(struct pt_regs *regs)
 {
 	struct pt_regs *old_regs = set_irq_regs(regs);
+	int cpu = smp_processor_id();
 	struct clock_event_device *evt = &clockevent_mvf;
 	u32 reg;
 
 	reg = __raw_readl(timer_base + GT_INT_STAT);
 	if (reg) {
 		mvf_timer_clear_int();
+		__inc_irq_stat(cpu, global_timer_irqs);
 		evt->event_handler(evt);
 	}
 
 	set_irq_regs(old_regs);
 	
 }
-#else
-static irqreturn_t mvf_timer_interrupt(int irq, void *dev_id)
+
+void show_global_timer_irqs(struct seq_file *p, int prec)
 {
-	struct clock_event_device *evt = &clockevent_mvf;
-	u32 reg;
+	unsigned int cpu;
 
-	reg = __raw_readl(timer_base + GT_INT_STAT);
-	if (reg) {
-		mvf_timer_clear_int();
-		evt->event_handler(evt);
-		return IRQ_HANDLED;
-	}
-	return IRQ_NONE;
+	seq_printf(p, "%*s: ", prec, "GLOB");
+
+	for_each_present_cpu(cpu)
+		seq_printf(p, "%10u ", __get_irq_stat(cpu, global_timer_irqs));
+
+	seq_printf(p, " Global timer interrupts\n");
 }
-
-static struct irqaction mvf_timer_irq = {
-	.name		= "MVF Timer Tick",
-	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
-	.handler	= mvf_timer_interrupt,
-};
-#endif
 
 static struct clock_event_device clockevent_mvf = {
 	.name		= "mvf_timer",
-	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT, //FIXME
-	//.shift		= 32,	//FIXME
+	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
 	.set_mode	= mvf_set_mode,
 	.set_next_event	= mvf_set_next_event,
-	.rating		= 350,	//FIXME
+	.rating		= 350,
 };
-
 
 /*
  * Setup the global clock events for a CPU.
@@ -213,9 +204,5 @@ void __init mvf_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 					0xf, 0xffffffff);
 
 	/* Make sure our local interrupt controller has this enabled */
-#if 1
 	gic_enable_ppi(irq);
-#else
-	setup_irq(irq, &mvf_timer_irq);
-#endif
 }

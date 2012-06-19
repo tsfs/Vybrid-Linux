@@ -15,6 +15,9 @@ typedef struct {
 #ifdef CONFIG_SMP
 	unsigned int ipi_irqs[NR_IPI];
 #endif
+#ifdef CONFIG_ARCH_MVF
+	unsigned int global_timer_irqs;
+#endif
 } ____cacheline_aligned irq_cpustat_t;
 
 #include <linux/irq_cpustat.h>	/* Standard mappings for irq_cpustat_t above */

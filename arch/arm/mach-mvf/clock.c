@@ -4018,6 +4018,7 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 {
 	__iomem void *base;
 	int i;
+	struct clk *old_parent;
 
 	internal_low_reference = sirc;
 	internal_high_reference = firc;
@@ -4040,25 +4041,14 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 	clk_enable(&ips_bus_clk);
 	clk_enable(&ddrc_clk);
 
-#if 1 //DEBUG
-	if (1) {
-		struct clk *old_parent = clk_get_parent(&enet_rmii_clk);
-#if 0
-		if (old_parent != &enet_clk)  {
-			clk_set_parent(&enet_rmii_clk, &enet_clk);
-			printk("*** rmii_clk:%ldHz -> %ldHz\n",
-				clk_get_rate(old_parent), clk_get_rate(&fec0_clk));
-#else
-		if (old_parent != &enet_ext)  {
-			clk_set_parent(&enet_rmii_clk, &enet_ext);
-			printk("*** rmii_clk:%ldHz -> %ldHz\n",
-				clk_get_rate(old_parent), clk_get_rate(&fec0_clk));
-#endif
-		} else {
-			printk("*** rmii_clk:%ldHz\n", clk_get_rate(&enet_rmii_clk));
-		}
-		printk("*** fec0_clk:%ldHz\n", clk_get_rate(&fec0_clk));
-	}
+	/* setup enet rmii clock 50MHz */
+	old_parent = clk_get_parent(&enet_rmii_clk);
+#if 1 //ENET PLL5 Main clock 50Mhz
+	if (old_parent != &enet_clk)
+		clk_set_parent(&enet_rmii_clk, &enet_clk);
+#else //ENET External clock 50MHz
+	if (old_parent != &enet_ext)
+		clk_set_parent(&enet_rmii_clk, &enet_ext);
 #endif
 
 	/* Disable un-necessary PFDs & PLLs */
