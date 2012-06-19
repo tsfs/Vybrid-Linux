@@ -25,6 +25,11 @@
  *
  */
 
+
+#if defined(CONFIG_SERIAL_MVF_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
+#define SUPPORT_SYSRQ
+#endif
+
 #include <linux/module.h>
 #include <linux/ioport.h>
 #include <linux/init.h>
@@ -50,7 +55,7 @@
 #define SERIAL_MVF_MAJOR        207
 #define MINOR_START	        16
 #define DRIVER_NAME  "MVF-uart"
-#define DEV_NAME	 "ttyvmvf"
+#define DEV_NAME	 "ttymvf"
 
 #define UART_NR   6
 
@@ -71,6 +76,30 @@ struct mvf_port {
 # Error IRDA not implemented yet.
 #endif
 
+
+#ifdef DEBUG_MVF
+static void mvf_serial_dump(struct mvf_port *sport)
+{
+	printk("dmp\n");
+	printk("   BH: %02x, BL: %02x\n",
+		   readb(sport->port.membase + MVF_UART_BDH),                                                                               
+		   readb(sport->port.membase + MVF_UART_BDL));                                                                               
+
+    printk("   C1: %02x, C2: %02x C3:%02x\n",
+		   readb(sport->port.membase + MVF_UART_C1),                                                                               
+		   readb(sport->port.membase + MVF_UART_C2),                                                                               
+		   readb(sport->port.membase + MVF_UART_C3));
+    printk("   S1: %02x, S2: %02x\n",
+		   readb(sport->port.membase + MVF_UART_S1),                                                                               
+		   readb(sport->port.membase + MVF_UART_S2));                           	printk("ret\n");
+                                                    
+
+                                                                               
+}	
+#else
+#define mvf_serial_dump(x)
+#endif
+
 /*
  * Handle any change of modem status signal since we were last called.
  */
@@ -80,7 +109,7 @@ static void mvf_mctrl_check(struct mvf_port *sport)
 	/*
 	 * TBD
 	 */
-}
+}    bdh = readb(sport->port.membase + MVF_UART_BDH) & 0xc0;                                                                               
 #endif
 
 static inline int mvf_set_bps(struct mvf_port *sport,
@@ -88,6 +117,8 @@ static inline int mvf_set_bps(struct mvf_port *sport,
 {
 	unsigned char bdh,bdl;
 	unsigned long sbr;
+	bdh = readb(sport->port.membase + MVF_UART_BDH);
+	bdl = readb(sport->port.membase + MVF_UART_BDL);
 	sbr = base/(16*bps);
 	bdh = readb(sport->port.membase + MVF_UART_BDH) & 0xc0;
 	bdh = (sbr>>8) & 0x1f;
@@ -142,7 +173,9 @@ static void mvf_stop_tx(struct uart_port *port)
 	unsigned char c2;
 
 	c2 = readb(sport->port.membase + MVF_UART_C2);
-	writeb(c2 & ~UART_C2_TE, sport->port.membase + MVF_UART_C2);
+	writeb(c2 & ~(UART_C2_TCIE), 
+		   sport->port.membase + MVF_UART_C2);
+		
 }
 
 /*
@@ -178,7 +211,7 @@ static inline void mvf_transmit_buffer(struct mvf_port *sport)
 
 
 	while (!uart_circ_empty(xmit) &&
-		   !(readb(sport->port.membase + MVF_UART_TCFIFO) < sport->txfifo)){
+		   (readb(sport->port.membase + MVF_UART_TCFIFO) < sport->txfifo)) {
 		/* out the port here */
 		writeb(xmit->buf[xmit->tail], sport->port.membase + MVF_UART_D);
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
@@ -199,6 +232,12 @@ static inline void mvf_transmit_buffer(struct mvf_port *sport)
 static void mvf_start_tx(struct uart_port *port)
 {
 	struct mvf_port *sport = (struct mvf_port *)port;
+	unsigned char c2;
+
+	c2 = readb(sport->port.membase + MVF_UART_C2);
+	writeb(c2 | UART_C2_TE, sport->port.membase + MVF_UART_C2);
+	writeb(readb(sport->port.membase + MVF_UART_C2) | UART_C2_TCIE ,
+		   sport->port.membase + MVF_UART_C2);
 
 	if (readb(sport->port.membase + MVF_UART_SFIFO) & UART_SFIFO_TXEMPT)
 		mvf_transmit_buffer(sport);
@@ -242,18 +281,20 @@ static irqreturn_t mvf_rxint(int irq, void *dev_id)
 
 	spin_lock_irqsave(&sport->port.lock,flags);
 
-	while (!(readb(sport->port.membase + MVF_UART_SFIFO) 
-			 & UART_SFIFO_RXEMPT)) {
+	while (readb(sport->port.membase + MVF_UART_RCFIFO)) {
 		flg = TTY_NORMAL;
 		sport->port.icount.rx++;
-
-		rx = (unsigned int)readb(sport->port.membase + MVF_UART_D);
 		
+		rx = (unsigned int)readb(sport->port.membase + MVF_UART_D);
+	
 		if (uart_handle_sysrq_char(&sport->port, (unsigned char)rx))
 			continue;
 
 		sfifo = readb(sport->port.membase + MVF_UART_SFIFO);
 		s1 = readb(sport->port.membase + MVF_UART_S1);
+		writeb(sfifo&0x05, sport->port.membase + MVF_UART_SFIFO);
+
+
 		if ((sfifo & (UART_SFIFO_RXOF | UART_SFIFO_RXUF))
 			|| (s1 & (UART_S1_PF | UART_S1_FE))) {
 			if (s1 & UART_S1_PF)
@@ -269,6 +310,9 @@ static irqreturn_t mvf_rxint(int irq, void *dev_id)
 				continue;
 			}
 			
+			if ( uart_handle_sysrq_char(&sport->port, (unsigned char)rx))
+				continue;
+
 			if ( s1 & UART_S1_PF )
 				flg = TTY_PARITY;
 			else if (s1 & UART_S1_FE)
@@ -298,14 +342,20 @@ static irqreturn_t mvf_int(int irq, void *dev_id)
 	s1 = readb(sport->port.membase + MVF_UART_S1);
 	s2 = readb(sport->port.membase + MVF_UART_S2);
 
+	/* DEBUG */ mvf_serial_dump(sport);
+
 	/* Check RXINT */
 	if (s1 & UART_S1_RDRF) {
 		mvf_rxint(irq, dev_id);
+	}else if (s1 & UART_S1_TDRE){
+		mvf_txint(irq, dev_id);
+		
 	}
 
-	if (s1 & UART_S1_TDRE)
-		mvf_txint(irq, dev_id);
+	if ( s2 )
+		readb(sport->port.membase + MVF_UART_S2);
 
+	//	writeb(s1,sport->port.membase + MVF_UART_S1);
 
 	return IRQ_HANDLED;
 }
@@ -330,7 +380,7 @@ static unsigned int mvf_get_mctrl(struct uart_port *port)
 	/*
 	 * TBD
 	 */
-	return tmp;
+	return 0;
 }
 
 static void mvf_set_mctrl(struct uart_port *port, unsigned int mctrl)
@@ -358,7 +408,7 @@ static void mvf_break_ctl(struct uart_port *port, int break_state)
 static int mvf_startup(struct uart_port *port)
 {
 	struct mvf_port *sport = (struct mvf_port *)port;
-	int retval;
+	int retval = 0;
 	unsigned long flags;
 	struct tty_struct *tty;
 	unsigned char c2,fifo;
@@ -366,7 +416,8 @@ static int mvf_startup(struct uart_port *port)
 	/*
 	 * Disable Interrupts.
 	 */
-	writeb(0xff,sport->port.membase + MVF_UART_S2); /* Clear All Interrupts */
+	writeb(readb(sport->port.membase + MVF_UART_S2) & 0xc0,
+		   sport->port.membase + MVF_UART_S2); /* Clear Status Interrupts */
 
 	/*
 	 * Allocate the IRQ(s) i.MX1 has three interrupts whereas later
@@ -387,7 +438,9 @@ static int mvf_startup(struct uart_port *port)
 	 */
 
 	c2 = readb(sport->port.membase + MVF_UART_C2);
-	c2 |= (UART_C2_RIE | UART_C2_TIE | UART_C2_TE | UART_C2_RE);
+	// c2 |= (UART_C2_RIE | UART_C2_TIE | UART_C2_TE | UART_C2_RE);
+	//c2 |= (UART_C2_RIE | UART_C2_TCIE | UART_C2_TE | UART_C2_RE);
+	c2 |= (UART_C2_ILIE | UART_C2_TE | UART_C2_RE);
 	writeb(c2, sport->port.membase + MVF_UART_C2);
 
 	
@@ -399,11 +452,11 @@ static int mvf_startup(struct uart_port *port)
 	fifo = readb(sport->port.membase + MVF_UART_PFIFO);
 	sport->txfifo = GET_FSIZE((fifo>>4)&0x07);
 	sport->rxfifo = GET_FSIZE((fifo)&0x07);
-
+	// FIFO Enable
+	writeb(readb(sport->port.membase + MVF_UART_PFIFO) | 0x88, 
+		   sport->port.membase + MVF_UART_PFIFO);
 
 	tty = sport->port.state->port.tty;
-
-	return 0;
 
 error_out1:
 	return retval;
@@ -472,7 +525,7 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	termios->c_cflag &=~CSIZE;
 	termios->c_cflag |= CS8;
 	
-	c1 &=~UART_C1_M;
+	c1 = readb(sport->port.membase + MVF_UART_C1) & ~UART_C1_M;
 	c2 = readb(sport->port.membase + MVF_UART_C2);
 	c3 = readb(sport->port.membase + MVF_UART_C3);
 
@@ -494,7 +547,7 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * Ask the core to calculate the divisor for us.
 	 */
 	baud = uart_get_baud_rate(port, termios, old, 50, port->uartclk / 16);
-	mvf_set_bps(sport,port->uartclk,baud);
+	//mvf_set_bps(sport,port->uartclk,baud);
 
 	/*
 	 * Update the per-port timeout.
@@ -509,6 +562,7 @@ mvf_set_termios(struct uart_port *port, struct ktermios *termios,
 	writeb(c3,sport->port.membase + MVF_UART_C3);
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
+
 	
 }
 
@@ -628,7 +682,40 @@ static void
 mvf_console_write(struct console *co, const char *s, unsigned int count)
 {
 	struct mvf_port *sport = mvf_ports[co->index];
+
+
+	unsigned int status, oldc1, oldc2, oldc3, c2;
+
+	/*
+	 * First save the control registers and then disable the interrupts
+	 */
+	oldc1 = readb(sport->port.membase + MVF_UART_C1);
+	oldc2 = readb(sport->port.membase + MVF_UART_C2);
+	oldc3 = readb(sport->port.membase + MVF_UART_C3);
+
+	c2 = oldc2 & ~(UART_C2_TE | UART_C2_RE 
+				   | UART_C2_RIE | UART_C2_RIE);
+	c2 |= (UART_C2_TE );
+
+	writeb(c2, sport->port.membase + MVF_UART_C2);
+
+
 	uart_console_write(&sport->port, s, count, mvf_console_putchar);
+
+#if 1
+	/*
+	 * Finally, wait for the transmitter to become empty
+	 */
+	do {
+		status = readb(sport->port.membase + MVF_UART_S1);
+	} while (!(status & UART_S1_TDRE));
+
+#endif
+
+	/*
+	 * Restore the control registers
+	 */
+	writeb(oldc2, sport->port.membase + MVF_UART_C2);
 	return;
 }
 /*
@@ -748,7 +835,6 @@ static int serial_mvf_probe(struct platform_device *pdev)
 	}
 	
 	base = ioremap(res->start, PAGE_SIZE);
-	
 
 	sport->port.dev = &pdev->dev;
 	sport->port.mapbase = res->start;
