@@ -175,7 +175,6 @@ static void mvf_stop_tx(struct uart_port *port)
 	c2 = readb(sport->port.membase + MVF_UART_C2);
 	writeb(c2 & ~(UART_C2_TCIE), 
 		   sport->port.membase + MVF_UART_C2);
-		
 }
 
 /*
@@ -376,7 +375,9 @@ static unsigned int mvf_tx_empty(struct uart_port *port)
  */
 static unsigned int mvf_get_mctrl(struct uart_port *port)
 {
+#if 0
 	unsigned int tmp = TIOCM_DSR | TIOCM_CAR;
+#endif
 	/*
 	 * TBD
 	 */

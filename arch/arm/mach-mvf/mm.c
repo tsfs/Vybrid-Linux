@@ -36,6 +36,7 @@
 static struct map_desc mvf_io_desc[] __initdata = {
 	imx_map_entry(MVF, AIPS0, MT_DEVICE),
 	imx_map_entry(MVF, AIPS1, MT_DEVICE),
+	imx_map_entry(MVF, GPIOC, MT_DEVICE),
 };
 
 static void mvf_set_cpu_type(void)

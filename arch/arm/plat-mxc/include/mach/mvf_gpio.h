@@ -43,6 +43,7 @@ struct mvf_gpio_port {
 	                       /*      Use for Interrupts */
 	void __iomem *ibase;   /* IOMUX Register Base Address */
 	                       /* IOMUX USE For Direction */
+	int pad;
 	int irq;
 	int int_type;
 	int virtual_irq_start;

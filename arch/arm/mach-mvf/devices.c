@@ -40,6 +40,7 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 		.gbase = MVF_IO_ADDRESS(GPIO0_BASE_ADDR),
 		.pbase = MVF_IO_ADDRESS(MVF_PORT_0_BASE_ADDR),
 		.ibase = MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR),
+		.pad = 0,
 		.irq =MXC_INT_GPIOA,
 		.virtual_irq_start = MXC_GPIO_IRQ_START
 	},
@@ -48,6 +49,7 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 		.gbase = MVF_IO_ADDRESS(GPIO1_BASE_ADDR),
 		.pbase = MVF_IO_ADDRESS(MVF_PORT_1_BASE_ADDR),
 		.ibase = MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR),
+		.pad = 32*1,
 		.irq = MXC_INT_GPIOB,
 		.virtual_irq_start = MXC_GPIO_IRQ_START + 32 * 1
 	},
@@ -56,6 +58,7 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 		.gbase = MVF_IO_ADDRESS(GPIO2_BASE_ADDR),
 		.pbase = MVF_IO_ADDRESS(MVF_PORT_2_BASE_ADDR),
 		.ibase = MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR),
+		.pad = 32*2,
 		.irq = MXC_INT_GPIOC,
 		.virtual_irq_start = MXC_GPIO_IRQ_START + 32 * 2
 	},
@@ -66,6 +69,7 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 		.ibase = MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR),
 		.irq = MXC_INT_GPIOD,
 		//.irq_high = MXC_INT_GPIO4_INT31_16_NUM,
+		.pad = 32*3,
 		.virtual_irq_start = MXC_GPIO_IRQ_START + 32 * 3
 	},
 	{
@@ -74,6 +78,7 @@ static struct mvf_gpio_port mvf_gpio_ports[] = {
 		.pbase = MVF_IO_ADDRESS(MVF_PORT_4_BASE_ADDR),
 		.ibase = MVF_IO_ADDRESS(MVF_IOMUXC_BASE_ADDR),
 		.irq = MXC_INT_GPIOE,
+		.pad = 32*4,
 		.virtual_irq_start = MXC_GPIO_IRQ_START + 32 * 4
 	},
 };

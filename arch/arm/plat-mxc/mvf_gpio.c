@@ -30,6 +30,13 @@
 #include <asm/mach/irq.h>
 
 
+//#define GPIO_DEBUG
+#ifdef GPIO_DEBUG
+#define GPRT(fmt, args...) printk("DBG:%s[%d]" fmt,__func__,__LINE__,## args)
+#else
+#define GPRT(fmt...)
+#endif
+
 /*
  * The controllers related to this processing are GPIO and PORT. 
  * PORT: Chapter 6. Base Addr. 0x40049000
@@ -53,7 +60,7 @@ static int gpio_table_size;
 #define PT4  4
 
 #define NOCFG	0
-
+#if 0
 static unsigned char gpio_to_mux[] = {
 	/* PT_A */
 	GTM(PT0, 0,NOCFG),GTM(PT0, 1,NOCFG),GTM(PT0, 2,NOCFG),GTM(PT0, 3,NOCFG),
@@ -101,7 +108,10 @@ static unsigned char gpio_to_mux[] = {
     GTM(PT4,24,0x204),GTM(PT4,25,0x208),GTM(PT4,26,0x20c),GTM(PT4,27,0x210),
     GTM(PT4,28,0x214),GTM(PT4,29,NOCFG),GTM(PT4,30,NOCFG),GTM(PT4,31,NOCFG),
 };
-#define IOMUX_OFF(x) gpio_to_mux[x]
+#define IOMUX_OFF(x) (gpio_to_mux[x]<<2)
+#else
+#define IOMUX_OFF(x) ((x)<<2)
+#endif
 
 static struct mvf_gpio_port *mvf_gpio_ports;
 /*
@@ -283,13 +293,15 @@ static void _set_gpio_direction(struct gpio_chip *chip, unsigned offset,
 		container_of(chip, struct mvf_gpio_port, chip);
 	u32 l;
 	unsigned long flags;
-	unsigned long off = IOMUX_OFF(offset);
+	unsigned long off = IOMUX_OFF(offset + port->pad);
 
 	spin_lock_irqsave(&port->lock, flags);
-	l = __raw_readl(port->pbase + off) & ~0x3;
+	l = __raw_readl(port->ibase + off) & ~0x3;
+	GPRT("offset = %d,l = %x,dir = %d,off = %x(%d)\n",offset,l,dir,off,off>>2);
 	l |= 1<<dir;
-	__raw_writel(l, port->pbase + off);
+	__raw_writel(l, port->ibase + off);
 	spin_unlock_irqrestore(&port->lock, flags);
+	GPRT("result : addr = %08x = %08x\n",port->ibase + off,__raw_readl(port->ibase + off)); 
 }
 
 static void mvf_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
@@ -297,26 +309,42 @@ static void mvf_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	struct mvf_gpio_port *port =
 		container_of(chip, struct mvf_gpio_port, chip);
 
-	void __iomem *reg = (void __iomem *)((u32)(port->gbase) + GPIO_PDOR);
+	void __iomem *reg;
 	u32 l;
 	unsigned long flags;
 
+	GPRT("offset = %d,value = %d,reg = %08x\n",offset,value,reg);
 	spin_lock_irqsave(&port->lock, flags);
+#if 0
+	reg = (void __iomem *)((u32)(port->gbase) + GPIO_PSOR);
 	l = (__raw_readl(reg) & (~(1 << offset))) | (!!value << offset);
+#else
+	if ( value )
+		reg = (void __iomem *)((u32)(port->gbase) + GPIO_PSOR);
+	else
+		reg = (void __iomem *)((u32)(port->gbase) + GPIO_PCOR);
+	l = 1<<offset;
+#endif
+	GPRT("offset = %d,val = %08x\n",offset,l);
 	__raw_writel(l, reg);
 	spin_unlock_irqrestore(&port->lock, flags);
 }
 
 static int mvf_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
+	int ret;
+	unsigned long get_val;
 	struct mvf_gpio_port *port =
 		container_of(chip, struct mvf_gpio_port, chip);
-
-	return (__raw_readl((u32)(port->gbase) + GPIO_PSOR) >> offset) & 1;
+	get_val = __raw_readl((u32)(port->gbase) + GPIO_PDIR);
+	ret = (get_val >> offset & 1);
+	GPRT("offset = %d,addr = %08x, value = %08x,val = %08x\n",offset,(u32)(port->gbase) + GPIO_PDOR,get_val,ret);
+	return ret;
 }
 
 static int mvf_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 {
+	GPRT("offset = %d\n",offset);
 	_set_gpio_direction(chip, offset, 0);
 	return 0;
 }
@@ -324,6 +352,7 @@ static int mvf_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 static int mvf_gpio_direction_output(struct gpio_chip *chip,
 				     unsigned offset, int value)
 {
+	GPRT("value = %d\n",value);
 	mvf_gpio_set(chip, offset, value);
 	_set_gpio_direction(chip, offset, 1);
 	return 0;
@@ -344,6 +373,7 @@ int mvf_gpio_init(struct mvf_gpio_port *port, int cnt)
 	mvf_gpio_ports = port;
 	gpio_table_size = cnt;
 
+	GPRT("init\n");
 	printk(KERN_INFO "MVF GPIO hardware\n");
 
 	for (i = 0; i < cnt; i++) {
