@@ -97,14 +97,14 @@ static void mvf_set_mode(enum clock_event_mode mode,
 		/* timer load already set up */
 		ctrl = GT_CNTRL_TIMER_EN | GT_CNTRL_CMP_EN | GT_CNTRL_INT_EN |
 			GT_CNTRL_AOUT_INC;
-		gic_enable_ppi(clk->irq);
 		mvf_timer_clear_int();
+		gic_enable_ppi(clk->irq);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		/* period set, and timer enabled in 'next_event' hook */
 		ctrl = GT_CNTRL_CMP_EN | GT_CNTRL_INT_EN;
-		gic_enable_ppi(clk->irq);
 		mvf_timer_clear_int();
+		gic_enable_ppi(clk->irq);
 		break;
 	case CLOCK_EVT_MODE_UNUSED:
 	case CLOCK_EVT_MODE_SHUTDOWN:

@@ -4043,7 +4043,7 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 
 	/* setup enet rmii clock 50MHz */
 	old_parent = clk_get_parent(&enet_rmii_clk);
-#if 1 //ENET PLL5 Main clock 50Mhz
+#if 0 //ENET PLL5 Main clock 50MHz
 	if (old_parent != &enet_clk)
 		clk_set_parent(&enet_rmii_clk, &enet_clk);
 #else //ENET External clock 50MHz
