@@ -1,7 +1,7 @@
 /*
  * Driver for MVF serial ports
  *
- * Copyright 2012
+ * Copyright 2012 Freescale
  *
  * Based on drivers/tty/serial/imx.c
  *
@@ -173,8 +173,10 @@ static void mvf_stop_tx(struct uart_port *port)
 	unsigned char c2;
 
 	c2 = readb(sport->port.membase + MVF_UART_C2);
-	writeb(c2 & ~(UART_C2_TCIE), 
-		   sport->port.membase + MVF_UART_C2);
+	if ( readb(sport->port.membase + MVF_UART_SFIFO) & UART_SFIFO_TXEMPT) {
+		writeb(c2 & ~(UART_C2_TCIE | UART_C2_TE), 
+			   sport->port.membase + MVF_UART_C2);
+	}
 }
 
 /*
@@ -220,8 +222,10 @@ static inline void mvf_transmit_buffer(struct mvf_port *sport)
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(&sport->port);
 	
+#if 0
 	if (uart_circ_empty(xmit))
 		mvf_stop_tx(&sport->port);
+#endif
 }
 
 
@@ -346,7 +350,9 @@ static irqreturn_t mvf_int(int irq, void *dev_id)
 	/* Check RXINT */
 	if (s1 & UART_S1_RDRF) {
 		mvf_rxint(irq, dev_id);
-	}else if (s1 & UART_S1_TDRE){
+	}
+
+	if (s1 & UART_S1_TDRE){
 		mvf_txint(irq, dev_id);
 		
 	}
@@ -807,7 +813,7 @@ static int serial_mvf_resume(struct platform_device *dev)
 	return 0;
 }
 
-static consit struct dev_pm_ops serial_mvf_pm_ops = {
+static const struct dev_pm_ops serial_mvf_pm_ops = {
 	.suspend  = serial_mvf_suspend,
 	.resume   = serial_mvf_resume,
 };
