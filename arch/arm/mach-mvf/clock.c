@@ -4252,8 +4252,12 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 		     3 << MXC_CCM_CCGRx_CG8_OFFSET,
 		     MXC_CCM_CCGR11);
 
+	/* setup Global Timer */
 	base = MVF_IO_ADDRESS(MVF_CA5_SCU_GIC_BASE_ADDR + 0x200);
 	mvf_timer_init(&ca5_scu_clk, base, IRQ_GLOBALTIMER);
+	/* setup PIT(Periodic Interrupt Timer) */
+	base = ioremap(MVF_PIT_BASE_ADDR, SZ_4K);
+	mvf_pit_timer_init(&pit_clk, base, MXC_INT_PIT);
 
 	lp_high_freq = 0;
 	lp_med_freq = 0;
