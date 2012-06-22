@@ -29,6 +29,10 @@
 #include <asm/mvf_edma.h>
 #include <asm/mvf_edma_regs.h>
 
+#define MVF_MODE_MEMCPY	0x01
+#define MVF_MODE_CYCLIC	0x02
+#define MVF_MODE_SC		0x03
+
 #define MVF_MAX_DMA_ENGINE		1
 #define MVF_EDMA_CHANNELS		(MVF_MAX_DMA_ENGINE*MVF_EACH_DMA_CHANNEL)
 #define MVF_MAX_XFER_BYTES		2048
@@ -38,12 +42,17 @@ struct mvf_dma_chan {
 	struct dma_chan			chan;
 	struct dma_async_tx_descriptor	desc;
 	struct tasklet_struct		tasklet;
-	dma_addr_t			ccw_phys;
-	int				desc_count;
+	dma_addr_t			per_address;
+	unsigned long		watermark_level;
+	enum dma_slave_buswidth		word_size;
+	unsigned int dma_mode;
+	int					desc_count;
 	dma_cookie_t			last_completed;
 	enum dma_status			status;
 	unsigned int			flags;
+	unsigned int			resbytes;
 	void __iomem			*chan_mem_base;
+	struct scatterlist		*sg_list;
 #define MVF_DMA_SG_LOOP			(1 << 0)
 };
 
@@ -138,6 +147,80 @@ static dma_cookie_t mvf_dma_tx_submit(struct dma_async_tx_descriptor *tx)
 	return cookie;
 }
 
+#define MVF_DMA_LENGTH_LOOP	((unsigned int)-1)
+
+static int mvf_dma_sg_next(struct mvf_dma_chan *mvf_chan, struct scatterlist *sg)
+{
+	unsigned long now;
+	int channel = mvf_chan->chan.chan_id % MVF_EACH_DMA_CHANNEL;
+	void __iomem *base = mvf_chan->chan_mem_base;
+	unsigned short srcflag,dstflag,srcdelta,dstdelta;
+
+
+	now = min(mvf_chan->resbytes, sg->length);
+	if (mvf_chan->resbytes != MVF_DMA_LENGTH_LOOP)
+		mvf_chan->resbytes -= now;
+
+	srcflag = dstflag = 0;
+	srcdelta = dstdelta = 0;
+	if ((mvf_chan->dma_mode & DMA_MODE_MASK) == DMA_MODE_READ){
+		MVF_EDMA_TCD_DADDR(base, channel) = sg->dma_address;
+		MVF_EDMA_TCD_SADDR(base, channel) = mvf_chan->per_address;
+		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_1_BYTE){
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_8BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_8BIT;
+			srcdelta = 0;
+			dstdelta = 1;
+		}else
+		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_2_BYTES){
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_16BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_16BIT;
+			srcdelta = 0;
+			dstdelta = 2;
+		}else{
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_32BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_32BIT;
+			srcdelta = 0;
+			dstdelta = 4;
+		}
+
+	}else{
+		MVF_EDMA_TCD_DADDR(base, channel) = mvf_chan->per_address;
+		MVF_EDMA_TCD_SADDR(base, channel) = sg->dma_address;
+
+		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_1_BYTE){
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_8BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_8BIT;
+			srcdelta = 1;
+			dstdelta = 0;
+		}else
+		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_2_BYTES){
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_16BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_16BIT;
+			srcdelta = 2;
+			dstdelta = 0;
+		}else{
+			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_32BIT;
+			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_32BIT;
+			srcdelta = 4;
+			dstdelta = 0;
+		}
+	}
+
+	MVF_EDMA_TCD_ATTR(base, channel) = srcflag | dstflag;
+	MVF_EDMA_TCD_SOFF(base, channel) = MVF_EDMA_TCD_SOFF_SOFF(srcdelta);
+	MVF_EDMA_TCD_DOFF(base, channel) = MVF_EDMA_TCD_DOFF_DOFF(dstdelta);
+	MVF_EDMA_TCD_NBYTES(base, channel) = MVF_EDMA_TCD_NBYTES_NBYTES(now);
+
+	MVF_EDMA_TCD_SLAST(base, channel) = MVF_EDMA_TCD_SLAST_SLAST(0);
+	MVF_EDMA_TCD_CITER(base, channel) = MVF_EDMA_TCD_CITER_CITER(1);
+	MVF_EDMA_TCD_BITER(base, channel) = MVF_EDMA_TCD_BITER_BITER(1);
+	MVF_EDMA_TCD_DLAST_SGA(base, channel) = MVF_EDMA_TCD_DLAST_SGA_DLAST_SGA(0);
+
+	return now;
+}
+
+
 static void mvf_dma_tasklet(unsigned long data)
 {
 	struct mvf_dma_chan *mvf_chan = (struct mvf_dma_chan *) data;
@@ -159,9 +242,35 @@ mvf_find_chan(struct mvf_dma_engine *mvf_dma, int eng_idx, int chan_id)
 	return 0;
 }
 
+
+static int mvf_dma_handle(struct mvf_dma_chan *mvf_chan)
+{
+	int ret;
+	struct scatterlist *current_sg;
+
+	ret = 0;
+	if ( mvf_chan->flags != MVF_MODE_MEMCPY){
+		if (mvf_chan->sg_list) {
+			current_sg = mvf_chan->sg_list;
+			mvf_chan->sg_list = sg_next(mvf_chan->sg_list);
+			
+			// prepare next transfer
+			if (mvf_chan->sg_list) {
+				//	re-fill tx parameter
+				mvf_dma_sg_next(mvf_chan, mvf_chan->sg_list);
+				//	start tx
+				mvf_dma_enable_chan(mvf_chan);
+				ret = 1;
+			}
+		}
+	}
+	return ret;
+}
+
 static irqreturn_t mvf_dma_int_handler(int irq, void *dev_id)
 {
 	int i,int_src,engine;
+	int ret;
 	struct mvf_dma_engine *mvf_dma = dev_id;
 	struct mvf_dma_chan *mvf_chan;
 	void __iomem *base;
@@ -182,21 +291,27 @@ static irqreturn_t mvf_dma_int_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	//	read int source and clear soon
 	int_src = MVF_EDMA_INT(base);
+	MVF_EDMA_CINT(base) = MVF_EDMA_CINT_CAIR;
+
+	//	deliver int source and re-enable (if scatter gather is configured)
 	for (i = 0; i < MVF_EACH_DMA_CHANNEL; i++) {
 		if ( int_src & (1 << i)){
 			// find chan 
 			mvf_chan = mvf_find_chan(mvf_dma, engine, i);
 			if (mvf_chan){
-				mvf_chan->status = DMA_SUCCESS;
-				mvf_chan->last_completed = mvf_chan->desc.cookie;
-		
-				/* schedule tasklet on this channel */
-				tasklet_schedule(&mvf_chan->tasklet);
+				ret = mvf_dma_handle(mvf_chan);
+				if (ret == 0){
+					mvf_chan->status = DMA_SUCCESS;
+					mvf_chan->last_completed = mvf_chan->desc.cookie;
+							
+					/* schedule tasklet on this channel */
+					tasklet_schedule(&mvf_chan->tasklet);
+				}
 			}
 		}
 	}
-	MVF_EDMA_CINT(base) = MVF_EDMA_CINT_CAIR;
 
 	return IRQ_HANDLED;
 }
@@ -305,18 +420,157 @@ mvf_edma_set_tcd_params(struct mvf_dma_chan *mvf_chan, u32 source, u32 dest,
 	MVF_EDMA_SEEI(base) = MVF_EDMA_SEEI_SEEI(channel);
 }
 
+
+int
+mvf_dma_setup_sg(
+		struct mvf_dma_chan *mvf_chan,
+		unsigned int sgcount,
+		unsigned int dma_length,
+		unsigned int dmamode)
+{
+	mvf_chan->dma_mode = dmamode;
+	mvf_chan->resbytes = dma_length;
+
+	//	param check
+	if (!mvf_chan->sg_list || !sgcount) {
+		printk(KERN_ERR "empty sg list\n");
+		return -EINVAL;
+	}
+	if (!mvf_chan->sg_list->length) {
+		printk(KERN_ERR "dma_setup_sg zero length\n");
+		return -EINVAL;
+	}
+
+	mvf_dma_sg_next(mvf_chan, mvf_chan->sg_list);
+
+	return 0;
+}
+
+static struct dma_async_tx_descriptor *mvf_prep_slave_sg(
+		struct dma_chan *chan, struct scatterlist *sgl,
+		unsigned int sg_len, enum dma_transfer_direction direction,
+		unsigned long flags)
+{
+	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
+	struct scatterlist *sg;
+	int i, ret, dma_length = 0;
+	unsigned int dmamode;
+
+	if (mvf_chan->status == DMA_IN_PROGRESS)
+		return NULL;
+
+	mvf_chan->status = DMA_IN_PROGRESS;
+	mvf_chan->flags = MVF_MODE_SC;
+
+	for_each_sg(sgl, sg, sg_len, i) {
+		dma_length += sg->length;
+	}
+
+	if (direction == DMA_DEV_TO_MEM)
+		dmamode = DMA_MODE_READ;
+	else
+		dmamode = DMA_MODE_WRITE;
+
+	switch (mvf_chan->word_size) {
+	case DMA_SLAVE_BUSWIDTH_4_BYTES:
+		if (sgl->length & 3 || sgl->dma_address & 3)
+			return NULL;
+		break;
+	case DMA_SLAVE_BUSWIDTH_2_BYTES:
+		if (sgl->length & 1 || sgl->dma_address & 1)
+			return NULL;
+		break;
+	case DMA_SLAVE_BUSWIDTH_1_BYTE:
+		break;
+	default:
+		return NULL;
+	}
+	mvf_chan->sg_list = sgl;
+
+#if 1
+	ret = mvf_dma_setup_sg(mvf_chan, sg_len, dma_length, dmamode);
+#else
+	ret = imx_dma_setup_sg(imxdmac->imxdma_channel, sgl, sg_len,
+		 dma_length, imxdmac->per_address, dmamode);
+#endif
+	if (ret)
+		return NULL;
+
+	return &mvf_chan->desc;
+}
+
+static struct dma_async_tx_descriptor *mvf_dma_prep_dma_cyclic(
+		struct dma_chan *chan, dma_addr_t dma_addr, size_t buf_len,
+		size_t period_len, enum dma_transfer_direction direction)
+{
+	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
+	int i, ret;
+	unsigned int periods = buf_len / period_len;
+	unsigned int dmamode;
+
+	if (mvf_chan->status == DMA_IN_PROGRESS)
+		return NULL;
+
+	mvf_chan->status = DMA_IN_PROGRESS;
+	mvf_chan->flags = MVF_MODE_CYCLIC;
+
+#if 0
+	ret = imx_dma_setup_progression_handler(imxdmac->imxdma_channel,
+			imxdma_progression);
+	if (ret) {
+		dev_err(imxdma->dev, "Failed to setup the DMA handler\n");
+		return NULL;
+	}
+#endif
+
+	if (mvf_chan->sg_list)
+		kfree(mvf_chan->sg_list);
+
+	mvf_chan->sg_list = kcalloc(periods + 1,
+			sizeof(struct scatterlist), GFP_KERNEL);
+	if (!mvf_chan->sg_list)
+		return NULL;
+
+	sg_init_table(mvf_chan->sg_list, periods);
+
+	for (i = 0; i < periods; i++) {
+		mvf_chan->sg_list[i].page_link = 0;
+		mvf_chan->sg_list[i].offset = 0;
+		mvf_chan->sg_list[i].dma_address = dma_addr;
+		mvf_chan->sg_list[i].length = period_len;
+		dma_addr += period_len;
+	}
+
+	/* close the loop */
+	mvf_chan->sg_list[periods].offset = 0;
+	mvf_chan->sg_list[periods].length = 0;
+	mvf_chan->sg_list[periods].page_link =
+		((unsigned long)mvf_chan->sg_list | 0x01) & ~0x02;
+
+	if (direction == DMA_DEV_TO_MEM)
+		dmamode = DMA_MODE_READ;
+	else
+		dmamode = DMA_MODE_WRITE;
+
+	ret = mvf_dma_setup_sg(mvf_chan, periods, MVF_DMA_LENGTH_LOOP, dmamode);
+
+	if (ret)
+		return NULL;
+
+	return &mvf_chan->desc;
+}
+
 static struct dma_async_tx_descriptor *mvf_dma_prep_memcpy
 (struct dma_chan *chan,
 	dma_addr_t dst, dma_addr_t src,
 	size_t len, unsigned long flags)
 {
 	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
-//	struct mvf_dma_engine *mvf_dma = mvf_chan->mvf_dma;
-//	int channel = mvf_chan->chan.chan_id;
 
 	if (mvf_chan->status == DMA_IN_PROGRESS)
 		return NULL;
 
+	mvf_chan->flags = MVF_MODE_MEMCPY;
 	mvf_chan->status = DMA_IN_PROGRESS;
 
 	//	chan_id
@@ -356,21 +610,36 @@ static int mvf_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 		unsigned long arg)
 {
 	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
+	struct dma_slave_config *dmaengine_cfg = (void *)arg;
 	int ret = 0;
 
 	switch (cmd) {
-	case DMA_TERMINATE_ALL:
-		mvf_dma_reset_chan(mvf_chan);
-		mvf_dma_disable_chan(mvf_chan);
-		break;
-	case DMA_PAUSE:
-		mvf_dma_pause_chan(mvf_chan);
-		break;
-	case DMA_RESUME:
-		mvf_dma_resume_chan(mvf_chan);
-		break;
-	default:
-		ret = -ENOSYS;
+		case DMA_TERMINATE_ALL:
+			mvf_dma_reset_chan(mvf_chan);
+			mvf_dma_disable_chan(mvf_chan);
+			break;
+
+		case DMA_PAUSE:
+			mvf_dma_pause_chan(mvf_chan);
+			break;
+
+		case DMA_RESUME:
+			mvf_dma_resume_chan(mvf_chan);
+			break;
+
+		case DMA_SLAVE_CONFIG:
+			if (dmaengine_cfg->direction == DMA_DEV_TO_MEM) {
+				mvf_chan->per_address = dmaengine_cfg->src_addr;
+				mvf_chan->watermark_level = dmaengine_cfg->src_maxburst;
+				mvf_chan->word_size = dmaengine_cfg->src_addr_width;
+			} else {
+				mvf_chan->per_address = dmaengine_cfg->dst_addr;
+				mvf_chan->watermark_level = dmaengine_cfg->dst_maxburst;
+				mvf_chan->word_size = dmaengine_cfg->dst_addr_width;
+			}
+			return 0;
+		default:
+			return -ENOSYS;
 	}
 
 	return ret;
@@ -381,11 +650,14 @@ static enum dma_status mvf_dma_tx_status(struct dma_chan *chan,
 {
 	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
 	dma_cookie_t last_used;
+	enum dma_status ret;
 
 	last_used = chan->cookie;
+
+	ret = dma_async_is_complete(cookie, mvf_chan->last_completed, last_used);
 	dma_set_tx_state(txstate, mvf_chan->last_completed, last_used, 0);
 
-	return mvf_chan->status;
+	return ret;
 }
 
 static void mvf_dma_issue_pending(struct dma_chan *chan)
@@ -481,6 +753,8 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 #endif
 
 	dma_cap_set(DMA_MEMCPY, mvf_dma->dma_device.cap_mask);
+	dma_cap_set(DMA_SLAVE, mvf_dma->dma_device.cap_mask);
+	dma_cap_set(DMA_CYCLIC, mvf_dma->dma_device.cap_mask);
 
 	INIT_LIST_HEAD(&mvf_dma->dma_device.channels);
 
@@ -515,7 +789,10 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 	mvf_dma->dma_device.device_alloc_chan_resources = mvf_dma_alloc_chan_resources;
 	mvf_dma->dma_device.device_free_chan_resources = mvf_dma_free_chan_resources;
 	mvf_dma->dma_device.device_tx_status = mvf_dma_tx_status;
+	mvf_dma->dma_device.device_prep_slave_sg = mvf_prep_slave_sg;
 	mvf_dma->dma_device.device_prep_dma_memcpy = mvf_dma_prep_memcpy;
+	mvf_dma->dma_device.device_prep_dma_cyclic = mvf_dma_prep_dma_cyclic;
+
 	mvf_dma->dma_device.device_control = mvf_dma_control;
 	mvf_dma->dma_device.device_issue_pending = mvf_dma_issue_pending;
 

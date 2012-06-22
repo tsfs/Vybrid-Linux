@@ -18,6 +18,11 @@
 #include <asm/mvf_edma_regs.h>
 #include <linux/scatterlist.h>
 
+#define DMA_MODE_READ		0
+#define DMA_MODE_WRITE		1
+#define DMA_MODE_MASK		1
+
+
 #define MCF_EDMA_INT0_CHANNEL_BASE 		(8)
 #define MCF_EDMA_INT0_CONTROLLER_BASE 	(64)
 #define MCF_EDMA_INT0_BASE				(MCF_EDMA_INT0_CHANNEL_BASE + MCF_EDMA_INT0_CONTROLLER_BASE)

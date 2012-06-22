@@ -123,7 +123,7 @@ static inline void twr_vf600_init_uart(void)
 	mvf_add_imx_uart(4, NULL);
 	mvf_add_imx_uart(5, NULL);
 }
-
+#if 0
 //FIXME
 static int twr_vf600_fec_phy_init(struct phy_device *phydev)
 {
@@ -165,11 +165,11 @@ static int twr_vf600_fec_power_hibernate(struct phy_device *phydev)
 
 	return 0;
 }
-
+#endif
 static struct fec_platform_data fec_data __initdata = {
-	.init			= twr_vf600_fec_phy_init,
-	.power_hibernate	= twr_vf600_fec_power_hibernate,
-	.phy			= PHY_INTERFACE_MODE_RGMII,
+	.init			= NULL,
+	.power_hibernate	= NULL,
+	.phy			= PHY_INTERFACE_MODE_RMII,
 };
 
 static void twr_vf600_suspend_enter(void)

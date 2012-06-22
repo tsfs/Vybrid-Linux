@@ -1549,12 +1549,8 @@ fec_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ndev);
 
 	pdata = pdev->dev.platform_data;
-#if defined(CONFIG_SOC_VF6XX)
-	fep->phy_interface=PHY_INTERFACE_MODE_RMII;
-#else
 	if (pdata)
 		fep->phy_interface = pdata->phy;
-#endif
 	/* This device has up to three irqs on some platforms */
 	for (i = 0; i < 3; i++) {
 		irq = platform_get_irq(pdev, i);
