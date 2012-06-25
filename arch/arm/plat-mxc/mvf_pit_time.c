@@ -74,7 +74,6 @@ static inline void pit_irq_disable(void)
 {
 	unsigned int tmp;
 
-	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tmp = __raw_readl(timer_base + PIT_TCTRL(TIMER_CH));
 	__raw_writel(tmp & ~PIT_TCTRL_TIE , timer_base + PIT_TCTRL(TIMER_CH));
 }
@@ -83,14 +82,12 @@ static inline void pit_irq_enable(void)
 {
 	unsigned int tmp;
 
-	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tmp = __raw_readl(timer_base + PIT_TCTRL(TIMER_CH));
 	__raw_writel(tmp | PIT_TCTRL_TIE , timer_base + PIT_TCTRL(TIMER_CH));
 }
 
 static void pit_irq_acknowledge(void)
 {
-	
 	__raw_writel(__raw_readl(timer_base + PIT_TFLG(TIMER_CH)), 
 				 timer_base + PIT_TFLG(TIMER_CH));
 }
@@ -134,17 +131,9 @@ static int __init mvf_pit_clocksource_init(struct clk *timer_clk)
 	ticks_per_jiffy = DIV_ROUND_CLOSEST(c,HZ);
 
 	init_sched_clock(&cd, mvf_pit_update_sched_clock, 32, c);
-#if 1
-#if 0
-	return clocksource_mmio_init(reg, "mvf_pit_timer1", c, 200, 32,
-			clocksource_mmio_readl_down);
-#else
+
 	return clocksource_mmio_init(reg, "mvf_pit_timer1", c, 200, 32,
 			clocksource_mmio_readl_pit);
-#endif
-#else
-	return 0;
-#endif
 }
 
 
@@ -170,11 +159,6 @@ static void mvf_pit_set_mode(enum clock_event_mode mode,
 		pit_irq_acknowledge();
 	}
 	
-#ifdef DEBUG
-	printk(KERN_INFO "mvf_pit_set_mode: changing mode from %s to %s\n",
-		clock_event_mode_label[clockevent_mode],
-		clock_event_mode_label[mode]);
-#endif /* DEBUG */
 
 	/* Remember timer mode */
 	clockevent_mode = mode;
@@ -189,21 +173,19 @@ static void mvf_pit_set_mode(enum clock_event_mode mode,
 		__raw_writel(reg, timer_base + PIT_TCTRL(TIMER_CH));
 		pit_irq_enable();
 		local_irq_restore(flags);
-#if 0
-		printk(KERN_ERR"mvf_pit_set_mode: Periodic mode is not "
-			   "supported for MVF\n");
-#endif
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		/*
-	 * Do not put overhead of interrupt enable/disable into
-	 * mvf_pit_set_next_event(), the core has about 4 minutes
-	 * to call mvf_pit_set_next_event() or shutdown clock after
-	 * mode switching
-	 */
+		 * Do not put overhead of interrupt enable/disable into
+		 * mvf_pit_set_next_event(), the core has about 4 minutes
+		 * to call mvf_pit_set_next_event() or shutdown clock after
+		 * mode switching
+		 */
+#if 0
 		local_irq_save(flags);
 		pit_irq_enable();
 		local_irq_restore(flags);
+#endif
 		break;
 	case CLOCK_EVT_MODE_SHUTDOWN:
 	case CLOCK_EVT_MODE_UNUSED:
@@ -216,7 +198,6 @@ static void mvf_pit_set_mode(enum clock_event_mode mode,
 		/* Left event sources disabled, no more interrupts appear */
 		break;
 	}
-	/* DEBUG */ printk("DBG: %s[%d]: Start[%d] jiffies = %ld\n",__func__,__LINE__,mode, jiffies);
 }
 
 /*
@@ -229,7 +210,6 @@ static irqreturn_t mvf_pit_timer_interrupt(int irq, void *dev_id)
 	uint32_t tstat;
 	unsigned long reg;
 
-	//	printk("%s[%d]:j = %ld\n",__func__,__LINE__,jiffies);
 	tstat = __raw_readl(timer_base + PIT_TFLG(TIMER_CH));
 	if ( tstat ) {
 		__raw_writel(tstat, timer_base + PIT_TFLG(TIMER_CH));
@@ -244,7 +224,7 @@ static irqreturn_t mvf_pit_timer_interrupt(int irq, void *dev_id)
 static int mvf_pit_set_next_event(unsigned long evt,
 			      struct clock_event_device *unused)
 {
-#if 1
+#if 0
 	unsigned long tcmp;
 	tcmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
 	/* STOP Time */
@@ -257,27 +237,6 @@ static int mvf_pit_set_next_event(unsigned long evt,
 	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
 				 | (PIT_TCTRL_TEN), 
 				 timer_base + PIT_TCTRL(TIMER_CH));
-	//	printk("tcmp = %ld, evt = %ld\n",tcmp,evt);
-#else
-	unsigned long tcmp,cval;
-	unsigned long oval,nval;
-	tcmp = evt;
-	cval = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
-	oval = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
-	/* STOP Time */
-	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
-				 & ~(PIT_TCTRL_TEN), 
-				 timer_base + PIT_TCTRL(TIMER_CH));
-	__raw_writel(tcmp, timer_base + PIT_LDVAL(TIMER_CH));
-	/* Start Timer */
-	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
-				 | (PIT_TCTRL_TEN), 
-				 timer_base + PIT_TCTRL(TIMER_CH));
-	
-	__raw_writel(tcmp+cval, timer_base + PIT_LDVAL(TIMER_CH));
-	nval = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH));
-	tcmp = __raw_readl(timer_base + PIT_CVAL(TIMER_CH));
-	//	printk("DEBUG: KATSU: evt=%lud, oldval = %lud, nval = %lud,cval = %lud,tcmp = %lud\n",evt,oval,nval,cval,tcmp);
 #endif
 	return 0;
 
@@ -294,7 +253,6 @@ static struct irqaction mvf_pit_timer_irq = {
 static struct clock_event_device clockevent_mvf_pit = {
 	.name		= "mvf_pit_timer1",
 	.features	= CLOCK_EVT_FEAT_PERIODIC,
-	//	.features	= CLOCK_EVT_FEAT_ONESHOT,
 	.shift		= 32,
 	.set_mode	= mvf_pit_set_mode,
 	.set_next_event	= mvf_pit_set_next_event,
@@ -323,10 +281,7 @@ static int __init mvf_pit_clockevent_init(struct clk *timer_clk)
 void __init mvf_pit_timer_init(struct clk *timer_clk, void __iomem *base, int irq)
 {
 
-#if 1 /* Clock is fix to 50MHz */
 	clk_enable(timer_clk);
-#endif
-	//	printk("PIT base = 0x%08lx",(unsigned long)base);
 	timer_base = base;
 
 	/*
