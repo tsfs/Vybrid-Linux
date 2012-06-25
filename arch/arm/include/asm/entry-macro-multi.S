@@ -34,7 +34,8 @@
 #endif
 #endif
 
-#ifdef CONFIG_ARCH_MVF /* MVF Global Timer Support*/
+#if defined(CONFIG_ARCH_MVF) && !defined(CONFIG_MVF_USE_PIT)
+	/* MVF Global Timer Support*/
 	test_for_gtirq r0, r6, r5, lr
 	movne	r0, sp
 	adrne	lr, BSYM(1b)

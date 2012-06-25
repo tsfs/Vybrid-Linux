@@ -62,7 +62,7 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 #ifdef CONFIG_LOCAL_TIMERS
 	show_local_irqs(p, prec);
 #endif
-#ifdef CONFIG_ARCH_MVF
+#if defined(CONFIG_ARCH_MVF) && !defined(CONFIG_MVF_USE_PIT)
 	show_global_timer_irqs(p, prec);
 #endif
 	seq_printf(p, "%*s: %10lu\n", prec, "Err", irq_err_count);

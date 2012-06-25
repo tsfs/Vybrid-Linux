@@ -83,7 +83,7 @@ extern int imx_irq_set_priority(unsigned char irq, unsigned char prio);
 /* switch between IRQ and FIQ */
 extern int mxc_set_irq_fiq(unsigned int irq, unsigned int type);
 
-#ifdef CONFIG_ARCH_MVF
+#if defined(CONFIG_ARCH_MVF) && !defined(CONFIG_MVF_USE_PIT)
 struct seq_file;
 extern void show_global_timer_irqs(struct seq_file *, int);
 #endif

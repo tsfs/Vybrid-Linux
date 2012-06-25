@@ -61,6 +61,14 @@ config MACH_TWR_VF600
 
 comment "MVF Options:"
 
+config MVF_USE_PIT
+	bool "Use PIT instead of Global Timer"
+	help
+	  Use PIT as the system timer on systems that have it. Normally you
+	  don't have a reason to do so as the PIT has the same features and
+	  uses the same clocks as the Global Timer. Anyway, on some systems
+	  the Global Timer may be in use for other purposes.
+
 menu "IOMUX Setting"
 
 choice

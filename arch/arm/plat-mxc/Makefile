@@ -7,8 +7,11 @@ obj-y := clock.o devices.o cpu.o system.o irq-common.o usb_common.o usb_wakeup.o
 
 ifdef CONFIG_ARCH_MVF
 obj-y += mvf_gpio.o
-obj-y += mvf_time.o 
+ifdef CONFIG_MVF_USE_PIT
 obj-y += mvf_pit_time.o 
+else
+obj-y += mvf_time.o
+endif
 else
 obj-y += gpio.o
 obj-y += time.o

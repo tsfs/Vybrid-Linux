@@ -66,6 +66,7 @@
 static struct clock_event_device clockevent_mvf_pit;
 static enum clock_event_mode clockevent_mode = CLOCK_EVT_MODE_UNUSED;
 static unsigned long ticks_per_jiffy;
+static unsigned long int_cnt = 0;
 
 static void __iomem *timer_base;
 
@@ -118,6 +119,7 @@ cycle_t clocksource_mmio_readl_pit(struct clocksource *c)
 	cycle_t cyc;
 	cyc = __raw_readl(timer_base + PIT_LDVAL(TIMER_CH)) -  
 		__raw_readl(timer_base + PIT_CVAL(TIMER_CH));
+	cyc += int_cnt * ticks_per_jiffy;
 	
 	return cyc;
 }
@@ -150,6 +152,7 @@ static int __init mvf_pit_clocksource_init(struct clk *timer_clk)
 static void mvf_pit_set_mode(enum clock_event_mode mode,
 				struct clock_event_device *evt)
 {
+	unsigned long reg;
 	unsigned long flags;
 
 	/*
@@ -176,10 +179,14 @@ static void mvf_pit_set_mode(enum clock_event_mode mode,
 	/* Remember timer mode */
 	clockevent_mode = mode;
 	local_irq_restore(flags);
-	
+
+	reg = __raw_readl(timer_base + PIT_TCTRL(TIMER_CH));
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
 		local_irq_save(flags);
+		__raw_writel(ticks_per_jiffy, timer_base + PIT_LDVAL(TIMER_CH));
+		reg |= PIT_TCTRL_TEN;
+		__raw_writel(reg, timer_base + PIT_TCTRL(TIMER_CH));
 		pit_irq_enable();
 		local_irq_restore(flags);
 #if 0
@@ -200,6 +207,11 @@ static void mvf_pit_set_mode(enum clock_event_mode mode,
 		break;
 	case CLOCK_EVT_MODE_SHUTDOWN:
 	case CLOCK_EVT_MODE_UNUSED:
+		reg &= ~PIT_TCTRL_TEN;
+		__raw_writel(reg, timer_base + PIT_TCTRL(TIMER_CH));
+		int_cnt = 0;
+		pit_irq_disable();
+		break;
 	case CLOCK_EVT_MODE_RESUME:
 		/* Left event sources disabled, no more interrupts appear */
 		break;
@@ -222,11 +234,8 @@ static irqreturn_t mvf_pit_timer_interrupt(int irq, void *dev_id)
 	if ( tstat ) {
 		__raw_writel(tstat, timer_base + PIT_TFLG(TIMER_CH));
 		pit_irq_acknowledge();
-#if 1
 		evt->event_handler(evt);
-#else
-        xtime_update(1);
-#endif
+		int_cnt++;
 		return IRQ_HANDLED;
 	}
 	return IRQ_NONE;
@@ -324,8 +333,11 @@ void __init mvf_pit_timer_init(struct clk *timer_clk, void __iomem *base, int ir
 	 * Initialise to a known state (all timers off, and timing reset)
 	 */
 
-	//	__raw_writel(PIT_MCR_MDIS, timer_base + PIT_MCR); /* Stop PIT */
-	__raw_writel(0, timer_base + PIT_MCR); /* Stop PIT */
+	__raw_writel(0, timer_base + PIT_MCR); /* enable PIT */
+	/* STOP Time */
+	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
+				 & ~(PIT_TCTRL_TEN), 
+				 timer_base + PIT_TCTRL(TIMER_CH));
 
 	/* init and register the timer to the framework */
 	mvf_pit_clocksource_init(timer_clk);
@@ -333,17 +345,6 @@ void __init mvf_pit_timer_init(struct clk *timer_clk, void __iomem *base, int ir
 
 	/* Make irqs happen */
 	setup_irq(irq, &mvf_pit_timer_irq);
-
-	/* STOP Time */
-	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
-				 & ~(PIT_TCTRL_TEN), 
-				 timer_base + PIT_TCTRL(TIMER_CH));
-	
-	__raw_writel(ticks_per_jiffy, timer_base + PIT_LDVAL(TIMER_CH));
 	pit_irq_enable();
-	/* Start Timer */
-	__raw_writel(__raw_readl(timer_base + PIT_TCTRL(TIMER_CH)) 
-				 | (PIT_TCTRL_TEN), 
-				 timer_base + PIT_TCTRL(TIMER_CH));
 
 }
