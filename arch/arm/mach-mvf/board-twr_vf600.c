@@ -172,6 +172,48 @@ static struct fec_platform_data fec_data __initdata = {
 	.phy			= PHY_INTERFACE_MODE_RMII,
 };
 
+static struct resource edma_resources[] = {
+	[0] = {
+		.start = MVF_DMA0_BASE_ADDR,
+		.end = MVF_DMA0_BASE_ADDR + 0x2000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_DMA0,
+		.end = MXC_INT_DMA0,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = MXC_INT_DMA0_ERROR,
+		.end = MXC_INT_DMA0_ERROR,
+		.flags = IORESOURCE_IRQ,
+	}
+#if 0
+	[3] = {
+		.start = MVF_DMA1_BASE_ADDR,
+		.end = MVF_DMA1_BASE_ADDR + 0x2000,
+		.flags = IORESOURCE_MEM,
+	},
+	[4] = {
+		.start = MXC_INT_DMA1,
+		.end = MXC_INT_DMA1,
+		.flags = IORESOURCE_IRQ,
+	}
+	[5] = {
+		.start = MXC_INT_DMA1_ERROR,
+		.end = MXC_INT_DMA1_ERROR,
+		.flags = IORESOURCE_IRQ,
+	}
+#endif
+};
+
+static struct platform_device edma_device = {
+       .name = "mvf-edma",
+       .id = 0,
+       .num_resources = 3,
+       .resource = edma_resources,
+};
+
 static void twr_vf600_suspend_enter(void)
 {
 	/* suspend preparation */
@@ -214,6 +256,9 @@ static void __init twr_vf600_init(void)
 	twr_vf600_init_uart();
 	vf6xx_add_imx_snvs_rtc();
 	mvf_init_fec(fec_data);
+
+	platform_device_register(&edma_device);
+
 
 #if 0
 	vf6xx_add_pm_imx(0, &twr_vf600_pm_data);

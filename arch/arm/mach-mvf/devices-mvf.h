@@ -29,8 +29,10 @@ extern const struct imx_snvs_rtc_data vf6xx_imx_snvs_rtc_data __initconst;
 #define vf6xx_add_imx_snvs_rtc()	\
 	imx_add_snvs_rtc(&vf6xx_imx_snvs_rtc_data)
 
+#if 0
 extern const struct imx_dma_data vf6xx_dma_data __initconst;
 #define vf6xx_add_dma()	imx_add_dma(&vf6xx_dma_data);
+#endif
 
 extern const struct imx_fec_data vf6xx_fec_data __initconst;
 #define vf6xx_add_fec(pdata)	\
