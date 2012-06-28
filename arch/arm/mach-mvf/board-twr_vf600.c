@@ -80,31 +80,74 @@
 #include "board-twr_vf600.h"
 
 /* GPIO PIN, sort by PORT/BIT */
-#define TWR_VF600_GPIO10		IMX_GPIO_NR(1, 10)	//PTA20
-#define TWR_VF600_GPIO20		IMX_GPIO_NR(1, 20)	//PTA30
-#define TWR_VF600_GPIO21		IMX_GPIO_NR(1, 21)	//PTA31
-#define TWR_VF600_GPIO28		IMX_GPIO_NR(1, 28)	//PTB6
-#define TWR_VF600_GPIO29		IMX_GPIO_NR(1, 29)	//PTB7
-#define TWR_VF600_GPIO30		IMX_GPIO_NR(1, 30)	//PTB8
-#define TWR_VF600_GPIO31		IMX_GPIO_NR(1, 31)	//PTB9
-#define TWR_VF600_GPIO32		IMX_GPIO_NR(2, 0)	//PTB10
-#define TWR_VF600_GPIO33		IMX_GPIO_NR(2, 1) 	//PTB11
-#define TWR_VF600_GPIO34		IMX_GPIO_NR(2, 2)	//PTB12
-#define TWR_VF600_GPIO38		IMX_GPIO_NR(2, 6)	//PTB16
-#define TWR_VF600_GPIO39		IMX_GPIO_NR(2, 7)	//PTB17
-#define TWR_VF600_GPIO85		IMX_GPIO_NR(3, 21)	//PTD6
-#define TWR_VF600_GPIO92		IMX_GPIO_NR(3, 28)	//PTD13
-#define TWR_VF600_GPIO93		IMX_GPIO_NR(3, 29)	//PTB23
-#define TWR_VF600_GPIO96		IMX_GPIO_NR(4, 0)	//PTB26
-#define TWR_VF600_GPIO98		IMX_GPIO_NR(4, 2)	//PTB28
-#define TWR_VF600_GPIO102		IMX_GPIO_NR(4, 6)	//PTC29
-#define TWR_VF600_GPIO103		IMX_GPIO_NR(4, 7)	//PTC30
-#define TWR_VF600_GPIO104		IMX_GPIO_NR(4, 8)	//PTC31
-#define TWR_VF600_GPIO108		IMX_GPIO_NR(4, 12)	//PTE3
-#define TWR_VF600_GPIO134		IMX_GPIO_NR(5, 6)	//PTA7
+#define TWR_VF600_GPIO10		MVF_GPIO_NR(1, 10)	//PTA20
+#define TWR_VF600_GPIO20		MVF_GPIO_NR(1, 20)	//PTA30
+#define TWR_VF600_GPIO21		MVF_GPIO_NR(1, 21)	//PTA31
+#define TWR_VF600_GPIO28		MVF_GPIO_NR(1, 28)	//PTB6
+#define TWR_VF600_GPIO29		MVF_GPIO_NR(1, 29)	//PTB7
+#define TWR_VF600_GPIO30		MVF_GPIO_NR(1, 30)	//PTB8
+#define TWR_VF600_GPIO31		MVF_GPIO_NR(1, 31)	//PTB9
+#define TWR_VF600_GPIO32		MVF_GPIO_NR(2, 0)	//PTB10
+#define TWR_VF600_GPIO33		MVF_GPIO_NR(2, 1) 	//PTB11
+#define TWR_VF600_GPIO34		MVF_GPIO_NR(2, 2)	//PTB12
+#define TWR_VF600_GPIO38		MVF_GPIO_NR(2, 6)	//PTB16
+#define TWR_VF600_GPIO39		MVF_GPIO_NR(2, 7)	//PTB17
+#define TWR_VF600_GPIO85		MVF_GPIO_NR(3, 21)	//PTD6
+#define TWR_VF600_GPIO92		MVF_GPIO_NR(3, 28)	//PTD13
+#define TWR_VF600_GPIO93		MVF_GPIO_NR(3, 29)	//PTB23
+#define TWR_VF600_GPIO96		MVF_GPIO_NR(4, 0)	//PTB26
+#define TWR_VF600_GPIO98		MVF_GPIO_NR(4, 2)	//PTB28
+#define TWR_VF600_GPIO102		MVF_GPIO_NR(4, 6)	//PTC29
+#define TWR_VF600_GPIO103		MVF_GPIO_NR(4, 7)	//PTC30
+#define TWR_VF600_GPIO104		MVF_GPIO_NR(4, 8)	//PTC31
+#define TWR_VF600_GPIO108		MVF_GPIO_NR(4, 12)	//PTE3
+#define TWR_VF600_GPIO134		MVF_GPIO_NR(5, 6)	//PTA7
 
+#define HOME                    TWR_VF600_GPIO38
+#define BACK                    TWR_VF600_GPIO39
+#define MENU                    TWR_VF600_GPIO29
+#define VOLUP                   TWR_VF600_GPIO30
+#define VOLDOWN                 TWR_VF600_GPIO31
 
 void __init early_console_setup(unsigned long base, struct clk *clk);
+
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#define GPIO_BUTTON(gpio_num, ev_code, act_low, descr, wake)	\
+	{															\
+		.gpio		= gpio_num,									\
+		.type		= EV_KEY,								\
+		.code		= ev_code,								\
+		.active_low	= act_low,								\
+		.desc		= "btn " descr,							\
+		.wakeup		= wake,									\
+	}
+static struct gpio_keys_button mvf_buttons[] = {
+	GPIO_BUTTON(HOME,   KEY_HOME,      1,"home",       0),
+	GPIO_BUTTON(BACK,   KEY_BACK,      1,"back",       0),
+	GPIO_BUTTON(MENU,   KEY_MENU,      1,"menu",       0),
+	GPIO_BUTTON(VOLUP,  KEY_VOLUMEUP,  1,"volume-up",  0),
+	GPIO_BUTTON(VOLDOWN,KEY_VOLUMEDOWN,1,"volume-down",0),
+};
+/* For Keypad dirver*/
+static struct gpio_keys_platform_data mvf_button_data = {
+	.buttons = mvf_buttons,
+	.nbuttons = ARRAY_SIZE(mvf_buttons),
+};
+static struct platform_device mvf_android_button_device = {
+	.name   = "gpio-keys",
+	.id     = -1,
+	.num_resources = 0,
+	.dev = {
+		.platform_data = &mvf_button_data,
+	},
+};
+static void __init vf600_add_android_device_buttons(void)
+{
+	platform_device_register(&mvf_android_button_device);
+}
+#else
+static void __init vf600_add_android_device_buttons(void) {}
+#endif
 
 #if 0 //FIXME
 static const struct imxuart_platform_data mx6_arm2_uart1_data __initconst = {
@@ -258,6 +301,7 @@ static void __init twr_vf600_init(void)
 	mvf_init_fec(fec_data);
 
 	platform_device_register(&edma_device);
+	vf600_add_android_device_buttons();
 
 
 #if 0

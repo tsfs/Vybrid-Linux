@@ -31,6 +31,7 @@
 
 
 //#define GPIO_DEBUG
+#undef GPIO_DEBUG
 #ifdef GPIO_DEBUG
 #define GPRT(fmt, args...) printk("DBG:%s[%d]" fmt,__func__,__LINE__,## args)
 #else
@@ -176,7 +177,6 @@ static void gpio_mask_irq(struct irq_data *d)
 static void gpio_unmask_irq(struct irq_data *d)
 {
 	u32 gpio = irq_to_gpio(d->irq);
-	printk("gpio = %d\n",gpio);
 	_set_gpio_irqenable(&mvf_gpio_ports[gpio / 32], gpio & 0x1f, 1);
 }
 
@@ -226,9 +226,11 @@ static void mvf_gpio_irq_handler(struct mvf_gpio_port *port, u32 irq_stat)
 {
 	u32 gpio_irq_no_base = port->virtual_irq_start;
 
+	GPRT("irq_stat = %d\n",irq_stat);
 	while (irq_stat != 0) {
 		int irqoffset = fls(irq_stat) - 1;
 		generic_handle_irq(gpio_irq_no_base + irqoffset);
+		GPRT("virq = %d\n",gpio_irq_no_base + irqoffset);
 
 		irq_stat &= ~(1 << irqoffset);
 	}
@@ -240,11 +242,14 @@ static void mvf_gpio_irq_chain_handler(u32 irq, struct irq_desc *desc)
 	struct mvf_gpio_port *port = irq_get_handler_data(irq);
 	struct irq_chip *chip = irq_get_chip(irq);
 
+	GPRT("irq = %d\n",irq);
 	chained_irq_enter(chip, desc);
 
 	irq_stat = __raw_readl((void __iomem *)((u32)(port->pbase) + PORT_ISFR));
 
 	mvf_gpio_irq_handler(port, irq_stat);
+
+	__raw_writel(irq_stat,(void __iomem *)((u32)(port->pbase) + PORT_ISFR));
 
 	chained_irq_exit(chip, desc);	
 
