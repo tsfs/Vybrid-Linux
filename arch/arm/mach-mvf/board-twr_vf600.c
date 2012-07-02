@@ -257,6 +257,94 @@ static struct platform_device edma_device = {
        .resource = edma_resources,
 };
 
+
+//
+//	Timer resources
+//
+//	pit
+static struct resource pit_resources[] = {
+	[0] = {
+		.start = MVF_PIT_BASE_ADDR,
+		.end = MVF_PIT_BASE_ADDR + 0x1000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_PIT,
+		.end = MXC_INT_PIT,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device pit_device = {
+       .name = "mvf-pit",
+       .id = 0,
+       .num_resources = 2,
+       .resource = pit_resources,
+};
+
+//	ftm 0
+static struct resource ftm0_resources[] = {
+	[0] = {
+		.start = MVF_FTM0_BASE_ADDR,
+		.end = MVF_FTM0_BASE_ADDR + 0x1000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_FTM0,
+		.end = MXC_INT_FTM0,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device ftm0_device = {
+       .name = "mvf-ftm",
+       .id = 0,
+       .num_resources = 2,
+       .resource = ftm0_resources,
+};
+
+//	ftm 1
+static struct resource ftm1_resources[] = {
+	[0] = {
+		.start = MVF_FTM1_BASE_ADDR,
+		.end = MVF_FTM1_BASE_ADDR + 0x1000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_FTM1,
+		.end = MXC_INT_FTM1,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device ftm1_device = {
+       .name = "mvf-ftm",
+       .id = 1,
+       .num_resources = 2,
+       .resource = ftm1_resources,
+};
+
+//	pit
+static struct resource lpt_resources[] = {
+	[0] = {
+		.start = MVF_LPTMR_BASE_ADDR,
+		.end = MVF_LPTMR_BASE_ADDR + 0x1000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_LP_TIMER0,
+		.end = MXC_INT_LP_TIMER0,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device lpt_device = {
+       .name = "mvf-lpt",
+       .id = 0,
+       .num_resources = 2,
+       .resource = lpt_resources,
+};
+
 static void twr_vf600_suspend_enter(void)
 {
 	/* suspend preparation */
@@ -301,6 +389,10 @@ static void __init twr_vf600_init(void)
 	mvf_init_fec(fec_data);
 
 	platform_device_register(&edma_device);
+	platform_device_register(&pit_device);
+	platform_device_register(&ftm0_device);
+	platform_device_register(&ftm1_device);
+	platform_device_register(&lpt_device);
 	vf600_add_android_device_buttons();
 
 

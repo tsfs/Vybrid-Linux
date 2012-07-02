@@ -65,5 +65,9 @@ obj-$(CONFIG_RAMOOPS)		+= ramoops.o
 obj-$(CONFIG_MXC_IIM)           += mxc_iim.o
 obj-$(CONFIG_MXS_VIIM)		+= mxs_viim.o
 
+obj-$(CONFIG_FTM)			+= ftimer.o
+obj-$(CONFIG_LPTMR)			+= lptimer.o
+obj-$(CONFIG_PIT)			+= pitimer.o
+
 obj-$(CONFIG_JS_RTC)		+= js-rtc.o
 js-rtc-y = rtc.o

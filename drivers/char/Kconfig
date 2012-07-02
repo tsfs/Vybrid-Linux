@@ -644,5 +644,23 @@ config MXS_VIIM
 	help
 	  Support for access to MXS Virtual IIM device, most people should say N here.
 
+config FTM
+	bool "Flex Timer Module support"
+	depends on SOC_VF6XX
+	help
+	  Support Flex Timer Module.
+
+config LPTMR
+	bool "Low Power Timer Module support"
+	depends on SOC_VF6XX
+	help
+	  Support Low Power Timer Module.
+
+config PIT
+	bool "Periodic Interrupt Timer Module support"
+	depends on SOC_VF6XX
+	help
+	  Support Periodic Interrupt Timer Module.
+
 endmenu
 
