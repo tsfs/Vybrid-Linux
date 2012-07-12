@@ -88,6 +88,7 @@ static int timer_master_alloc_timer( int index)
 			if ( master_control.is_opened[ i] == TIMER_AVAILABLE){
 				master_control.is_opened[ i] = TIMER_BUSY;
 				ret = i;
+				break;
 			}
 		}
 	}else

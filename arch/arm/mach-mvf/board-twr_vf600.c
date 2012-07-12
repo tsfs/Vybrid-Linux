@@ -215,10 +215,10 @@ static struct fec_platform_data fec_data __initdata = {
 	.phy			= PHY_INTERFACE_MODE_RMII,
 };
 
-static struct resource edma_resources[] = {
+static struct resource edma_resources0[] = {
 	[0] = {
 		.start = MVF_DMA0_BASE_ADDR,
-		.end = MVF_DMA0_BASE_ADDR + 0x2000,
+		.end = MVF_DMA0_BASE_ADDR + 0x2000-1,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -230,33 +230,40 @@ static struct resource edma_resources[] = {
 		.start = MXC_INT_DMA0_ERROR,
 		.end = MXC_INT_DMA0_ERROR,
 		.flags = IORESOURCE_IRQ,
-	}
-#if 0
-	[3] = {
+	},
+};
+
+static struct platform_device edma_device0 = {
+       .name = "mvf-edma",
+       .id = 0,
+       .num_resources = 3,
+       .resource = edma_resources0,
+};
+
+static struct resource edma_resources1[] = {
+	[0] = {
 		.start = MVF_DMA1_BASE_ADDR,
 		.end = MVF_DMA1_BASE_ADDR + 0x2000,
 		.flags = IORESOURCE_MEM,
 	},
-	[4] = {
+	[1] = {
 		.start = MXC_INT_DMA1,
 		.end = MXC_INT_DMA1,
 		.flags = IORESOURCE_IRQ,
-	}
-	[5] = {
+	},
+	[2] = {
 		.start = MXC_INT_DMA1_ERROR,
 		.end = MXC_INT_DMA1_ERROR,
 		.flags = IORESOURCE_IRQ,
-	}
-#endif
+	},
 };
 
-static struct platform_device edma_device = {
+static struct platform_device edma_device1 = {
        .name = "mvf-edma",
-       .id = 0,
+       .id = 1,
        .num_resources = 3,
-       .resource = edma_resources,
+       .resource = edma_resources1,
 };
-
 
 //
 //	Timer resources
@@ -265,7 +272,7 @@ static struct platform_device edma_device = {
 static struct resource pit_resources[] = {
 	[0] = {
 		.start = MVF_PIT_BASE_ADDR,
-		.end = MVF_PIT_BASE_ADDR + 0x1000,
+		.end = MVF_PIT_BASE_ADDR + 0x1000-1,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -281,12 +288,12 @@ static struct platform_device pit_device = {
        .num_resources = 2,
        .resource = pit_resources,
 };
-
+#if 1
 //	ftm 0
 static struct resource ftm0_resources[] = {
 	[0] = {
 		.start = MVF_FTM0_BASE_ADDR,
-		.end = MVF_FTM0_BASE_ADDR + 0x1000,
+		.end = MVF_FTM0_BASE_ADDR + 0x1000-1,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -302,12 +309,13 @@ static struct platform_device ftm0_device = {
        .num_resources = 2,
        .resource = ftm0_resources,
 };
-
+#endif
+#if 1
 //	ftm 1
 static struct resource ftm1_resources[] = {
 	[0] = {
 		.start = MVF_FTM1_BASE_ADDR,
-		.end = MVF_FTM1_BASE_ADDR + 0x1000,
+		.end = MVF_FTM1_BASE_ADDR + 0x1000-1,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -323,12 +331,13 @@ static struct platform_device ftm1_device = {
        .num_resources = 2,
        .resource = ftm1_resources,
 };
+#endif
 
 //	pit
 static struct resource lpt_resources[] = {
 	[0] = {
 		.start = MVF_LPTMR_BASE_ADDR,
-		.end = MVF_LPTMR_BASE_ADDR + 0x1000,
+		.end = MVF_LPTMR_BASE_ADDR + 0x1000-1,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -388,7 +397,8 @@ static void __init twr_vf600_init(void)
 	vf6xx_add_imx_snvs_rtc();
 	mvf_init_fec(fec_data);
 
-	platform_device_register(&edma_device);
+	platform_device_register(&edma_device0);
+	platform_device_register(&edma_device1);
 	platform_device_register(&pit_device);
 	platform_device_register(&ftm0_device);
 	platform_device_register(&ftm1_device);

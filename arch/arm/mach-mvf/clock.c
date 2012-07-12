@@ -4209,7 +4209,7 @@ int __init mvf_clocks_init(unsigned long sirc, unsigned long firc,
 		     3 << MXC_CCM_CCGRx_CG9_OFFSET |
 		     3 << MXC_CCM_CCGRx_CG12_OFFSET |
 		     3 << MXC_CCM_CCGRx_CG13_OFFSET |
-		     3 << MXC_CCM_CCGRx_CG15_OFFSET,
+		     0 << MXC_CCM_CCGRx_CG15_OFFSET, //disable OpenVG clock
 		     MXC_CCM_CCGR8);
 	__raw_writel(3 << MXC_CCM_CCGRx_CG0_OFFSET |
 		     3 << MXC_CCM_CCGRx_CG1_OFFSET |

@@ -311,7 +311,7 @@ int ftm_probe(struct platform_device *pdev)
 	struct resource *ftm_membase, *ftm_irq;
 	struct mvf_ftm_dev *timedevptr;
 
-	ftm_membase = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	ftm_membase = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	ftm_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 
 	if (!ftm_irq || !ftm_membase){
@@ -353,6 +353,7 @@ int ftm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, timedevptr);
 
 	timer_master_register_platform(pdev);
+	printk (KERN_INFO "Flex Timer Module Driver (id = %d) Installed.\n", pdev->id);
 
 	return 0;
 }

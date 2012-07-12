@@ -29,6 +29,8 @@
 #include <asm/mvf_edma.h>
 #include <asm/mvf_edma_regs.h>
 
+//#define SCATTER_TEST
+
 #define MVF_MODE_MEMCPY	0x01
 #define MVF_MODE_CYCLIC	0x02
 #define MVF_MODE_SC		0x03
@@ -68,6 +70,20 @@ struct mvf_dma_engine {
 	int				err_irq[MVF_MAX_DMA_ENGINE];
 };
 
+void mvf_dma_regdump( void __iomem *base, int channel)
+{
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_SADDR(base, channel),	(unsigned int)MVF_EDMA_TCD_SADDR(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_DADDR(base, channel),	(unsigned int)MVF_EDMA_TCD_DADDR(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_ATTR(base, channel), 	(unsigned int)MVF_EDMA_TCD_ATTR(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_SOFF(base, channel),		(unsigned int)MVF_EDMA_TCD_SOFF(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_NBYTES(base, channel),	(unsigned int)MVF_EDMA_TCD_NBYTES(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_SLAST(base, channel),	(unsigned int)MVF_EDMA_TCD_SLAST(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_CITER(base, channel),	(unsigned int)MVF_EDMA_TCD_CITER(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_BITER(base, channel),	(unsigned int)MVF_EDMA_TCD_BITER(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_DOFF(base, channel),		(unsigned int)MVF_EDMA_TCD_DOFF(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_DLAST_SGA(base, channel),(unsigned int)MVF_EDMA_TCD_DLAST_SGA(base, channel));
+	printk("REG ADDR=%x  REG%x\n", (unsigned int)&MVF_EDMA_TCD_CSR(base, channel),		(unsigned int)MVF_EDMA_TCD_CSR(base, channel));
+}
 
 static void mvf_dma_reset_chan(struct mvf_dma_chan *mvf_chan)
 {
@@ -169,18 +185,18 @@ static int mvf_dma_sg_next(struct mvf_dma_chan *mvf_chan, struct scatterlist *sg
 		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_1_BYTE){
 			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_8BIT;
 			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_8BIT;
-			srcdelta = 0;
+			srcdelta = 1;
 			dstdelta = 1;
 		}else
 		if ( mvf_chan->word_size == DMA_SLAVE_BUSWIDTH_2_BYTES){
 			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_16BIT;
 			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_16BIT;
-			srcdelta = 0;
+			srcdelta = 2;
 			dstdelta = 2;
 		}else{
 			srcflag = MVF_EDMA_TCD_ATTR_SSIZE_32BIT;
 			dstflag = MVF_EDMA_TCD_ATTR_DSIZE_32BIT;
-			srcdelta = 0;
+			srcdelta = 4;
 			dstdelta = 4;
 		}
 
@@ -216,6 +232,12 @@ static int mvf_dma_sg_next(struct mvf_dma_chan *mvf_chan, struct scatterlist *sg
 	MVF_EDMA_TCD_CITER(base, channel) = MVF_EDMA_TCD_CITER_CITER(1);
 	MVF_EDMA_TCD_BITER(base, channel) = MVF_EDMA_TCD_BITER_BITER(1);
 	MVF_EDMA_TCD_DLAST_SGA(base, channel) = MVF_EDMA_TCD_DLAST_SGA_DLAST_SGA(0);
+
+//	mvf_dma_regdump(base, channel);
+
+	MVF_EDMA_TCD_CSR(base,channel) |= MVF_EDMA_TCD_CSR_INT_MAJOR;
+	MVF_EDMA_TCD_CSR(base,channel) &= ~MVF_EDMA_TCD_CSR_D_REQ;
+	MVF_EDMA_SEEI(base) = MVF_EDMA_SEEI_SEEI(channel);
 
 	return now;
 }
@@ -253,14 +275,19 @@ static int mvf_dma_handle(struct mvf_dma_chan *mvf_chan)
 		if (mvf_chan->sg_list) {
 			current_sg = mvf_chan->sg_list;
 			mvf_chan->sg_list = sg_next(mvf_chan->sg_list);
-			
 			// prepare next transfer
 			if (mvf_chan->sg_list) {
+#ifdef SCATTER_TEST
+			if ( mvf_chan->sg_list->length != 0){
+#endif
 				//	re-fill tx parameter
 				mvf_dma_sg_next(mvf_chan, mvf_chan->sg_list);
 				//	start tx
 				mvf_dma_enable_chan(mvf_chan);
 				ret = 1;
+#ifdef SCATTER_TEST
+			}
+#endif
 			}
 		}
 	}
@@ -290,10 +317,10 @@ static irqreturn_t mvf_dma_int_handler(int irq, void *dev_id)
 		printk("error irq\n");
 		return IRQ_HANDLED;
 	}
+	//printk("DMA irq occured = CR:%x  ES:%x SRC:%x \n", MVF_EDMA_CR(base), MVF_EDMA_ES(base),MVF_EDMA_INT(base));
 
 	//	read int source and clear soon
 	int_src = MVF_EDMA_INT(base);
-	MVF_EDMA_CINT(base) = MVF_EDMA_CINT_CAIR;
 
 	//	deliver int source and re-enable (if scatter gather is configured)
 	for (i = 0; i < MVF_EACH_DMA_CHANNEL; i++) {
@@ -310,6 +337,7 @@ static irqreturn_t mvf_dma_int_handler(int irq, void *dev_id)
 					tasklet_schedule(&mvf_chan->tasklet);
 				}
 			}
+			MVF_EDMA_CINT(base) = i;
 		}
 	}
 
@@ -331,10 +359,11 @@ static irqreturn_t mvf_dma_err_handler(int irq, void *dev_id)
 			engine = i;
 		}
 	}
+	printk(KERN_INFO"DMA error irq occured = CR:%x  ES:%x\n", (unsigned int)MVF_EDMA_CR(base), (unsigned int)MVF_EDMA_ES(base));
 
 	//	fail safe
 	if (!base){
-		printk("error irq\n");
+		printk(KERN_INFO"error irq\n");
 		return IRQ_HANDLED;
 	}
 
@@ -343,6 +372,7 @@ static irqreturn_t mvf_dma_err_handler(int irq, void *dev_id)
 		if ( err & (1 << i)){
 			mvf_chan = mvf_find_chan(mvf_dma, engine, i);
 			if (mvf_chan){
+				mvf_chan->last_completed = mvf_chan->desc.cookie;
 				mvf_chan->status = DMA_ERROR;
 				tasklet_schedule(&mvf_chan->tasklet);
 			}
@@ -357,14 +387,13 @@ static irqreturn_t mvf_dma_err_handler(int irq, void *dev_id)
 static int mvf_dma_alloc_chan_resources(struct dma_chan *chan)
 {
 	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
-//	struct mvf_dma_engine *mvf_dma = mvf_chan->mvf_dma;
 
 	mvf_dma_reset_chan(mvf_chan);
 
 	dma_async_tx_descriptor_init(&mvf_chan->desc, chan);
 	mvf_chan->desc.tx_submit = mvf_dma_tx_submit;
 
-	/* the descriptor is ready */
+	//	the descriptor is ready
 	async_tx_ack(&mvf_chan->desc);
 
 	return 0;
@@ -373,11 +402,8 @@ static int mvf_dma_alloc_chan_resources(struct dma_chan *chan)
 static void mvf_dma_free_chan_resources(struct dma_chan *chan)
 {
 	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
-//	struct mvf_dma_engine *mvf_dma = mvf_chan->mvf_dma;
 
 	mvf_dma_disable_chan(mvf_chan);
-
-//	free_irq(mvf_chan->chan_irq, mvf_dma);
 }
 
 
@@ -387,12 +413,9 @@ mvf_edma_set_tcd_params(struct mvf_dma_chan *mvf_chan, u32 source, u32 dest,
 			u32 citer, u32 biter, u32 doff, u32 dlast_sga,
 			int major_int, int disable_req)
 {
-//	struct mvf_dma_chan *mvf_chan = to_mvf_dma_chan(chan);
-//	struct mvf_dma_engine *mvf_dma = mvf_chan->mvf_dma;
-
 	int channel = mvf_chan->chan.chan_id % MVF_EACH_DMA_CHANNEL;
 	void __iomem *base = mvf_chan->chan_mem_base;
-	
+
 	MVF_EDMA_TCD_SADDR(base, channel) = source;
 	MVF_EDMA_TCD_DADDR(base, channel) = dest;
 	MVF_EDMA_TCD_ATTR(base, channel) = attr;
@@ -403,6 +426,21 @@ mvf_edma_set_tcd_params(struct mvf_dma_chan *mvf_chan, u32 source, u32 dest,
 	MVF_EDMA_TCD_BITER(base, channel) = MVF_EDMA_TCD_BITER_BITER(biter);
 	MVF_EDMA_TCD_DOFF(base, channel) = MVF_EDMA_TCD_DOFF_DOFF(doff);
 	MVF_EDMA_TCD_DLAST_SGA(base, channel) = MVF_EDMA_TCD_DLAST_SGA_DLAST_SGA(dlast_sga);
+
+#if 0
+	printk("Channel:%d  Top reg:%x\n TX descriptor  src : %x / dest : %x / attr : %x\n",channel, &MVF_EDMA_TCD_SADDR(base, channel), source,dest,attr);
+	MVF_EDMA_TCD_SADDR(base, channel) = source&0xfffffff0;
+	MVF_EDMA_TCD_DADDR(base, channel) = dest&0xffffff00;
+	MVF_EDMA_TCD_ATTR(base, channel) = (0 | MVF_EDMA_TCD_ATTR_SSIZE_32BIT | MVF_EDMA_TCD_ATTR_DSIZE_32BIT);
+	MVF_EDMA_TCD_SOFF(base, channel) = 0x4;
+	MVF_EDMA_TCD_NBYTES(base, channel) = 16;
+	MVF_EDMA_TCD_SLAST(base, channel) = 0;
+	MVF_EDMA_TCD_CITER(base, channel) = 1;
+	MVF_EDMA_TCD_BITER(base, channel) = 1;
+	MVF_EDMA_TCD_DOFF(base, channel) = 4;
+	MVF_EDMA_TCD_DLAST_SGA(base, channel) = 0;
+	MVF_EDMA_TCD_CSR(base, channel) = 0x0000;
+#endif
 
 	/* interrupt at the end of major loop */
 	if (major_int)
@@ -487,12 +525,8 @@ static struct dma_async_tx_descriptor *mvf_prep_slave_sg(
 	}
 	mvf_chan->sg_list = sgl;
 
-#if 1
 	ret = mvf_dma_setup_sg(mvf_chan, sg_len, dma_length, dmamode);
-#else
-	ret = imx_dma_setup_sg(imxdmac->imxdma_channel, sgl, sg_len,
-		 dma_length, imxdmac->per_address, dmamode);
-#endif
+
 	if (ret)
 		return NULL;
 
@@ -514,20 +548,12 @@ static struct dma_async_tx_descriptor *mvf_dma_prep_dma_cyclic(
 	mvf_chan->status = DMA_IN_PROGRESS;
 	mvf_chan->flags = MVF_MODE_CYCLIC;
 
-#if 0
-	ret = imx_dma_setup_progression_handler(imxdmac->imxdma_channel,
-			imxdma_progression);
-	if (ret) {
-		dev_err(imxdma->dev, "Failed to setup the DMA handler\n");
-		return NULL;
-	}
-#endif
-
 	if (mvf_chan->sg_list)
 		kfree(mvf_chan->sg_list);
 
 	mvf_chan->sg_list = kcalloc(periods + 1,
 			sizeof(struct scatterlist), GFP_KERNEL);
+
 	if (!mvf_chan->sg_list)
 		return NULL;
 
@@ -542,10 +568,12 @@ static struct dma_async_tx_descriptor *mvf_dma_prep_dma_cyclic(
 	}
 
 	/* close the loop */
+#ifndef SCATTER_TEST
 	mvf_chan->sg_list[periods].offset = 0;
 	mvf_chan->sg_list[periods].length = 0;
 	mvf_chan->sg_list[periods].page_link =
 		((unsigned long)mvf_chan->sg_list | 0x01) & ~0x02;
+#endif
 
 	if (direction == DMA_DEV_TO_MEM)
 		dmamode = DMA_MODE_READ;
@@ -573,33 +601,14 @@ static struct dma_async_tx_descriptor *mvf_dma_prep_memcpy
 	mvf_chan->flags = MVF_MODE_MEMCPY;
 	mvf_chan->status = DMA_IN_PROGRESS;
 
-	//	chan_id
-#if 1
 	mvf_edma_set_tcd_params(
 						mvf_chan,
 						src,
 						dst,
-						(0 | MVF_EDMA_TCD_ATTR_SSIZE_32BIT | MVF_EDMA_TCD_ATTR_DSIZE_32BIT), 
-						0x04,
+						(0 | MVF_EDMA_TCD_ATTR_SSIZE_8BIT | MVF_EDMA_TCD_ATTR_DSIZE_8BIT), 
+						0x01,
 						len, 0x0, 1, 1, 
-						0x04, 0x0, 0x1,0x0);
-
-#else
-	//	channel control
-	if ( channel == 10){
-		mvf_edma_set_tcd_params(
-						channel,
-						src,
-						dst,
-						(0 | MVF_EDMA_TCD_ATTR_SSIZE_32BIT | MVF_EDMA_TCD_ATTR_DSIZE_32BIT), 
-						0x04,
-						len, 0x0, 1, 1, 
-						0x04, 0x0, 0x1,0x0);
-	}else{
-	}
-#endif
-
-
+						0x01, 0x0, 0x1,0x0);
 	mvf_chan->desc_count = 0;
 
 	return &mvf_chan->desc;
@@ -689,22 +698,6 @@ static int __init mvf_dma_init(struct mvf_dma_engine *mvf_dma)
 
 	}
 	return 0;
-
-
-#if 0
-	int ret;
-
-	ret = clk_prepare_enable(mvf_dma->clk);
-	if (ret)
-		return ret;
-
-	ret = mxs_reset_block(mvf_dma->base);
-	if (ret)
-		goto err_out;
-
-err_out:
-	return ret;
-#endif
 }
 
 static int __init mvf_dma_probe(struct platform_device *pdev)
@@ -727,7 +720,7 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 		}
 
 		mvf_dma->base[i] = ioremap(iores->start, resource_size(iores));
-		if (!mvf_dma->base) {
+		if (!mvf_dma->base[i]) {
 			ret = -ENOMEM;
 			goto err_ioremap;
 		}
@@ -744,14 +737,6 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 		mvf_dma->err_irq[i]=errirq_res->start;
 	}
 
-#if 0
-	mvf_dma->clk = clk_get(&pdev->dev, NULL);
-	if (IS_ERR(mvf_dma->clk)) {
-		ret = PTR_ERR(mvf_dma->clk);
-		goto err_clk;
-	}
-#endif
-
 	dma_cap_set(DMA_MEMCPY, mvf_dma->dma_device.cap_mask);
 	dma_cap_set(DMA_SLAVE, mvf_dma->dma_device.cap_mask);
 	dma_cap_set(DMA_CYCLIC, mvf_dma->dma_device.cap_mask);
@@ -761,7 +746,6 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 	/* Initialize channel parameters */
 	for (i = 0; i < MVF_EDMA_CHANNELS; i++) {
 		struct mvf_dma_chan *mvf_chan = &mvf_dma->mvf_chans[i];
-
 		index =  i / MVF_EACH_DMA_CHANNEL;
 
 		mvf_chan->mvf_dma = mvf_dma;
@@ -770,7 +754,6 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 
 		tasklet_init(&mvf_chan->tasklet, mvf_dma_tasklet,
 			     (unsigned long) mvf_chan);
-
 
 		/* Add the channel to mvf_chan list */
 		list_add_tail(&mvf_chan->chan.device_node,
@@ -802,7 +785,7 @@ static int __init mvf_dma_probe(struct platform_device *pdev)
 		goto err_init;
 	}
 
-	dev_info(mvf_dma->dma_device.dev, "initialized\n");
+	printk(KERN_INFO "eDMA driver Installed.\n");
 
 	return 0;
 

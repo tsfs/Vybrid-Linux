@@ -39,6 +39,7 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #include <linux/signal.h>
+#include <linux/clk.h>
 
 #include <asm/irq.h>
 #include <asm/pgtable.h>
@@ -49,6 +50,8 @@
 #include <asm/mvf_switch.h>
 #include "mvf_switch.h"
 
+#define LOOKUP_ELEMENTS 2048
+
 #define	SWITCH_MAX_PORTS	1
 #define CONFIG_FEC_SHARED_PHY
 #define FEC_PHY
@@ -57,6 +60,8 @@
 				&& defined(CONFIG_FEC_1588)
 #define CONFIG_ENHANCED_BD
 #endif
+
+#define TOMOICHI_DMA_MOVE
 
 /* Interrupt events/masks.
 */
@@ -70,6 +75,16 @@
 #define FEC_ENET_RXB	((uint)0x01000000)	/* A buffer was received */
 #define FEC_ENET_MII	((uint)0x00800000)	/* MII interrupt */
 #define FEC_ENET_EBERR	((uint)0x00400000)	/* SDMA bus error */
+
+#define FEC_MMFR_ST			(1 << 30)
+#define FEC_MMFR_OP_READ	(2 << 28)
+#define FEC_MMFR_OP_WRITE	(1 << 28)
+#define FEC_MMFR_PA(v)		((v & 0x1f) << 23)
+#define FEC_MMFR_RA(v)		((v & 0x1f) << 18)
+#define FEC_MMFR_TA			(2 << 16)
+#define FEC_MMFR_DATA(v)	(v & 0xffff)
+#define FEC_MII_TIMEOUT		30 /* ms */
+
 
 static int switch_enet_open(struct net_device *dev);
 static int switch_enet_start_xmit(struct sk_buff *skb, struct net_device *dev);
@@ -87,8 +102,7 @@ static void switch_set_mac_address(struct net_device *dev);
 /* Make MII read/write commands for the FEC.
 */
 #define mk_mii_read(REG)	(0x60020000 | ((REG & 0x1f) << 18))
-#define mk_mii_write(REG, VAL)	(0x50020000 | ((REG & 0x1f) << 18) | \
-						(VAL & 0xffff))
+#define mk_mii_write(REG, VAL)	(0x50020000 | ((REG & 0x1f) << 18) | (VAL & 0xffff))
 
 /* Transmitter timeout.
 */
@@ -101,6 +115,30 @@ struct port_status ports_link_status;
 
 /* the user space pid, used to send the link change to user space */
 long user_pid = 1;
+
+//	for debug
+void dump_regs(void __iomem *fec)
+{
+	printk("FEC_ECNTRL REG = %x\n", readl(fec + FEC_ECNTRL));
+	printk("FEC_MII_SPEED REG = %x\n", readl(fec + FEC_MII_SPEED));
+	printk("FEC_R_CNTRL REG = %x\n", readl(fec + FEC_R_CNTRL));
+	printk("FEC_X_CNTRL REG = %x\n", readl(fec + FEC_X_CNTRL));
+}
+
+static void adjust_phy_speed( struct switch_enet_private *fep, int phy_index)
+{
+	u32 val;
+
+	val = readl(fep->fec[phy_index] + FEC_R_CNTRL);
+	if (fep->phydev[phy_index] && fep->phydev[phy_index]->speed == SPEED_100){
+		printk("Phy %d is 100M\n", phy_index);
+		val &= ~(1 << 9);
+	}else{
+		printk("Phy %d is 10M\n", phy_index);
+		val |= (1 << 9);
+	}
+	writel(val, fep->fec[phy_index] + FEC_R_CNTRL);
+}
 
 /* ----------------------------------------------------------------*/
 /*
@@ -156,7 +194,6 @@ void read_atable(struct switch_enet_private *fep,
 	int index,
 	unsigned long *read_lo, unsigned long *read_hi)
 {
-//	unsigned long atable_base = 0xFC0E0000;
 	unsigned long atable_base = (long)fep->hwentry;
 
 	*read_lo = *((volatile unsigned long *)(atable_base + (index<<3)));
@@ -167,7 +204,6 @@ void write_atable(struct switch_enet_private *fep,
 	int index,
 	unsigned long write_lo, unsigned long write_hi)
 {
-//	unsigned long atable_base = 0xFC0E0000;
 	unsigned long atable_base = (long)fep->hwentry;
 
 	*((volatile unsigned long *)(atable_base + (index<<3))) = write_lo;
@@ -241,7 +277,7 @@ eswPortInfo *esw_portinfofifo_read(
 void esw_clear_atable(struct switch_enet_private *fep)
 {
 	int index;
-	for (index = 0; index < 2048; index++)
+	for (index = 0; index < LOOKUP_ELEMENTS; index++)
 		write_atable(fep, index, 0, 0);
 }
 
@@ -249,7 +285,7 @@ void esw_dump_atable(struct switch_enet_private *fep)
 {
 	int index;
 	unsigned long read_lo, read_hi;
-	for (index = 0; index < 2048; index++) {
+	for (index = 0; index < LOOKUP_ELEMENTS; index++) {
 		read_atable(fep, index, &read_lo, &read_hi);
 	}
 
@@ -1077,11 +1113,11 @@ void esw_mac_lookup_table_range(struct switch_enet_private *fep)
 	int index;
 	unsigned long read_lo, read_hi;
 	/* Pointer to switch address look up memory*/
-	for (index = 0; index < 2048; index++)
+	for (index = 0; index < LOOKUP_ELEMENTS; index++)
 		write_atable(fep, index, index, (~index));
 
 	/* Pointer to switch address look up memory*/
-	for (index = 0; index < 2048; index++) {
+	for (index = 0; index < LOOKUP_ELEMENTS; index++) {
 		read_atable(fep, index, &read_lo, &read_hi);
 		if (read_lo != index) {
 			printk(KERN_ERR "%s:Mismatch at low %d\n",
@@ -2321,6 +2357,7 @@ int esw_get_mac_address_lookup_table(struct switch_enet_private *fep,
 static void l2switch_aging_timer(unsigned long data)
 {
 	struct switch_enet_private *fep;
+printk("aging occured\n");
 
 	fep = (struct switch_enet_private *)data;
 
@@ -3203,6 +3240,9 @@ switch_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	cbd_t	*bdp;
 	unsigned short	status;
 	unsigned long flags;
+#ifdef TOMOICHI_DMA_MOVE
+	void *bufaddr;
+#endif
 
 	fep = netdev_priv(dev);
 	fecp = (switch_t *)fep->hwp;
@@ -3219,7 +3259,11 @@ switch_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	/* Set buffer length and buffer pointer.
 	*/
+#ifdef TOMOICHI_DMA_MOVE
+	bufaddr = skb->data;
+#else
 	bdp->cbd_bufaddr = __pa(skb->data);
+#endif
 	bdp->cbd_datlen = skb->len;
 
 	/*
@@ -3233,7 +3277,11 @@ switch_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 		memcpy(fep->tx_bounce[index1],
 		       (void *)skb->data, bdp->cbd_datlen);
+#ifdef TOMOICHI_DMA_MOVE
+		bufaddr = fep->tx_bounce[index1];
+#else
 		bdp->cbd_bufaddr = __pa(fep->tx_bounce[index1]);
+#endif
 	}
 
 	/* Save skb pointer. */
@@ -3246,8 +3294,13 @@ switch_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	 * data.
 	 */
 //	flush_dcache_range((unsigned long)skb->data,
+#ifdef TOMOICHI_DMA_MOVE
+	bdp->cbd_bufaddr = dma_map_single(&fep->pdev->dev, bufaddr,
+			SWITCH_ENET_TX_FRSIZE, DMA_TO_DEVICE);
+#else
 	flush_kernel_vmap_range(skb->data,
 			   (unsigned long)skb->data + skb->len);
+#endif
 
 	/* Send it on its way.  Tell FEC it's ready, interrupt when done,
 	 * it's the last BD of the frame, and to put the CRC on the end.
@@ -3304,12 +3357,14 @@ switch_enet_interrupt(int irq, void *dev_id)
 	irqreturn_t ret = IRQ_NONE;
 
 	fecp = (switch_t *)dev->base_addr;
-
 	/* Get the interrupt events that caused us to be here.
 	*/
 	do {
 		int_events = fecp->switch_ievent;
 		fecp->switch_ievent = int_events;
+
+//		if (int_events)printk("Interrupt %s:%d occured ev:%x, reg address %x\n",  __func__, __LINE__,int_events, &fecp->switch_ievent);
+
 		/* Handle receive event in its own function. */
 
 		/* Transmit OK, or non-fatal error. Update the buffer
@@ -3361,7 +3416,12 @@ switch_enet_tx(struct net_device *dev)
 	while (((status = bdp->cbd_sc) & BD_ENET_TX_READY) == 0) {
 		if (bdp == fep->cur_tx && fep->tx_full == 0)
 			break;
-
+#ifdef TOMOICHI_DMA_MOVE
+		if (bdp->cbd_bufaddr)
+			dma_unmap_single(&fep->pdev->dev, bdp->cbd_bufaddr,
+				SWITCH_ENET_TX_FRSIZE, DMA_TO_DEVICE);
+		bdp->cbd_bufaddr = 0;
+#endif
 		skb = fep->tx_skbuff[fep->skb_dirty];
 		/* Check for errors. */
 		if (status & (BD_ENET_TX_HB | BD_ENET_TX_LC |
@@ -3483,6 +3543,7 @@ switch_enet_rx(struct net_device *dev)
 		dev->stats.rx_bytes += pkt_len;
 		data = (__u8 *)__va(bdp->cbd_bufaddr);
 
+
 		/* This does 16 byte alignment, exactly what we need.
 		 * The packet length includes FCS, but we don't want to
 		 * include that when passing upstream as it messes up
@@ -3498,6 +3559,7 @@ switch_enet_rx(struct net_device *dev)
 			skb->protocol = eth_type_trans(skb, dev);
 			netif_rx(skb);
 		}
+
 rx_processing_done:
 
 		/* Clear the status flags for this buffer */
@@ -3524,70 +3586,45 @@ rx_processing_done:
 	spin_unlock_irq(&fep->hw_lock);
 }
 
-static int fec_mdio_transfer(struct mii_bus *bus, int phy_id,
-	int reg, int regval)
-{
-	struct net_device *dev = bus->priv;
-	unsigned long   flags;
-	struct switch_enet_private *fep;
-	int tries = 100;
-	int retval = 0;
-
-	fep = netdev_priv(dev);
-	spin_lock_irqsave(&fep->mii_lock, flags);
-
-	regval |= phy_id << 23;
-#if 0
-	MCF_FEC_MMFR0 = regval;
-#else
-	writel(regval, fep->fec[0] + FEC_MII_DATA);
-#endif
-
-	/* wait for it to finish, this takes about 23 us on lite5200b */
-#if 0
-	while (!(MCF_FEC_EIR0 & FEC_ENET_MII) && --tries)
-#else
-	while (!(readl(fep->fec[0]+FEC_IEVENT) & FEC_ENET_MII) && --tries)
-#endif
-		udelay(5);
-
-	if (!tries) {
-		printk(KERN_ERR "%s timeout\n", __func__);
-		return -ETIMEDOUT;
-	}
-
-#if 0
-	MCF_FEC_EIR0 = FEC_ENET_MII;
-#else
-	writel(FEC_ENET_MII, fep->fec[0]+FEC_IEVENT);
-#endif
-
-#if 0
-	retval = MCF_FEC_MMFR0;
-#else
-	retval = readl(fep->fec[0] + FEC_MII_DATA);
-#endif
-
-	spin_unlock_irqrestore(&fep->mii_lock, flags);
-
-	return retval;
-}
-
-
 static int mvf_fec_mdio_read(struct mii_bus *bus,
 	int phy_id, int reg)
 {
-	int ret;
-	ret = fec_mdio_transfer(bus, phy_id, reg,
-		mk_mii_read(reg));
-	return ret;
+	unsigned long time_left;
+	struct switch_enet_private *fep;
+
+	struct net_device *dev = bus->priv;
+
+	fep = netdev_priv(dev);
+
+	/* start a read op */
+	writel(FEC_MMFR_ST | FEC_MMFR_OP_READ |
+		FEC_MMFR_PA(phy_id) | FEC_MMFR_RA(reg) |
+		FEC_MMFR_TA, fep->fec[0] + FEC_MII_DATA);
+
+	mdelay(FEC_MII_TIMEOUT);
+
+	/* return value */
+	return FEC_MMFR_DATA(readl(fep->fec[0] + FEC_MII_DATA));
 }
 
 static int mvf_fec_mdio_write(struct mii_bus *bus,
 	int phy_id, int reg, u16 data)
 {
-	return fec_mdio_transfer(bus, phy_id, reg,
-			mk_mii_write(reg, data));
+	unsigned long time_left;
+	struct switch_enet_private *fep;
+	struct net_device *dev = bus->priv;
+
+	fep = netdev_priv(dev);
+
+	/* start a write op */
+	writel(FEC_MMFR_ST | FEC_MMFR_OP_WRITE |
+		FEC_MMFR_PA(phy_id) | FEC_MMFR_RA(reg) |
+		FEC_MMFR_TA | FEC_MMFR_DATA(data),
+		fep->fec[0] + FEC_MII_DATA);
+
+	mdelay(FEC_MII_TIMEOUT);
+
+	return 0;
 }
 
 static void switch_adjust_link1(struct net_device *dev)
@@ -3605,6 +3642,7 @@ static void switch_adjust_link1(struct net_device *dev)
 		if (phydev1->speed != priv->phy1_speed) {
 			new_state = 1;
 			priv->phy1_speed = phydev1->speed;
+			adjust_phy_speed(priv,0);
 		}
 
 		if (priv->phy1_old_link == PHY_DOWN) {
@@ -3626,6 +3664,10 @@ static void switch_adjust_link1(struct net_device *dev)
 		/*Send the new status to user space*/
 		if (user_pid != 1)
 			sys_tkill(user_pid, SIGUSR1);
+
+#if 1
+		phy_print_status(phydev1);
+#endif
 	}
 }
 
@@ -3644,6 +3686,7 @@ static void switch_adjust_link2(struct net_device *dev)
 		if (phydev2->speed != priv->phy2_speed) {
 			new_state = 1;
 			priv->phy2_speed = phydev2->speed;
+			adjust_phy_speed(priv,1);
 		}
 
 		if (priv->phy2_old_link == PHY_DOWN) {
@@ -3665,13 +3708,17 @@ static void switch_adjust_link2(struct net_device *dev)
 		/*Send the new status to user space*/
 		if (user_pid != 1)
 			sys_tkill(user_pid, SIGUSR1);
+
+#if 1
+		phy_print_status(phydev2);
+#endif
 	}
 }
 
 static int mvf_switch_init_phy(struct net_device *dev)
 {
 	struct switch_enet_private *priv = netdev_priv(dev);
-	struct phy_device *phydev[SWITCH_EPORT_NUMBER] = {NULL, NULL};
+	struct phy_device *phydev[PHY_MAX_ADDR] = {NULL, NULL};
 	int i, startnode = 0;
 
 	/* search for connect PHY device */
@@ -3722,34 +3769,24 @@ static int mvf_switch_init_phy(struct net_device *dev)
 	priv->phy2_speed = 0;
 	priv->phy2_duplex = -1;
 
-#ifndef CONFIG_ARCH_MVF
-	phydev[0] = phy_connect(dev, phydev[0]->dev.bus_id,
-#else
 	phydev[0] = phy_connect(dev, dev_name(&phydev[0]->dev),
-#endif
 		&switch_adjust_link1, 0, PHY_INTERFACE_MODE_MII);
 	if (IS_ERR(phydev[0])) {
 		printk(KERN_ERR " %s phy_connect failed\n", __func__);
 		return PTR_ERR(phydev[0]);
 	}
-
-#ifndef CONFIG_ARCH_MVF
-	phydev[1] = phy_connect(dev, phydev[1]->dev.bus_id,
-#else
-	phydev[0] = phy_connect(dev, dev_name(&phydev[0]->dev),
-#endif
+	phydev[1] = phy_connect(dev, dev_name(&phydev[1]->dev),
 		&switch_adjust_link2, 0, PHY_INTERFACE_MODE_MII);
 	if (IS_ERR(phydev[1])) {
 		printk(KERN_ERR " %s phy_connect failed\n", __func__);
 		return PTR_ERR(phydev[1]);
 	}
-
+	printk("Phy devs %s, %s\n", dev_name(&phydev[0]->dev),dev_name(&phydev[1]->dev));
 	for (i = 0; i < SWITCH_EPORT_NUMBER; i++) {
 		printk(KERN_INFO "attached phy %i to driver %s\n",
 			phydev[i]->addr, phydev[i]->drv->name);
 		priv->phydev[i] = phydev[i];
 	}
-
 	return 0;
 }
 /* -----------------------------------------------------------------------*/
@@ -3759,6 +3796,7 @@ switch_enet_open(struct net_device *dev)
 	struct switch_enet_private *fep = netdev_priv(dev);
 	volatile switch_t *fecp;
 	int i;
+
 
 	fecp = (volatile switch_t *)fep->hwp;
 	/* I should reset the ring buffers here, but I don't yet know
@@ -3783,7 +3821,6 @@ switch_enet_open(struct net_device *dev)
 
 	/* no phy,  go full duplex,  it's most likely a hub chip */
 	switch_restart(dev, 1);
-
 	/* if the fec is the fist open, we need to do nothing*/
 	/* if the fec is not the fist open, we need to restart the FEC*/
 	if (fep->sequence_done == 0)
@@ -3800,6 +3837,8 @@ switch_enet_open(struct net_device *dev)
 
 	netif_start_queue(dev);
 	fep->opened = 1;
+
+
 	return 0;
 }
 
@@ -3808,6 +3847,7 @@ switch_enet_close(struct net_device *dev)
 {
 	struct switch_enet_private *fep = netdev_priv(dev);
 	int i;
+
 
 	/* Don't know what to do yet.*/
 	fep->opened = 0;
@@ -3820,6 +3860,8 @@ switch_enet_close(struct net_device *dev)
 		phy_write(fep->phydev[i], MII_BMCR, BMCR_PDOWN);
 	}
 #endif
+
+
 	return 0;
 }
 
@@ -3897,78 +3939,57 @@ switch_set_mac_address(struct net_device *dev)
 static void
 switch_hw_init(	struct switch_enet_private *fep)
 {
-#if 0
-	/* GPIO config - RMII mode for both MACs */
-	MCF_GPIO_PAR_FEC = (MCF_GPIO_PAR_FEC &
-		MCF_GPIO_PAR_FEC_FEC_MASK) |
-		MCF_GPIO_PAR_FEC_FEC_RMII0FUL_1FUL;
-#endif
+	int i;
 
-
-#if 0
-	/* Initialize MAC 0/1 */
-	/* RCR */
-	MCF_FEC_RCR0 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
-			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
-	MCF_FEC_RCR1 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
-			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
-	/* TCR */
-	MCF_FEC_TCR0 = MCF_FEC_TCR_FDEN;
-	MCF_FEC_TCR1 = MCF_FEC_TCR_FDEN;
-#else
+//	/* Initialize MAC 0/1 */
+//	/* RCR */
+//	MCF_FEC_RCR0 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
+//			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
+//	MCF_FEC_RCR1 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
+//			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
+//	/* TCR */
+//	MCF_FEC_TCR0 = MCF_FEC_TCR_FDEN;
+//	MCF_FEC_TCR1 = MCF_FEC_TCR_FDEN;
 	writel((MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE | MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD), fep->fec[0] + FEC_R_CNTRL);
 	writel((MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE | MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD), fep->fec[1] + FEC_R_CNTRL);
 
 	writel(MCF_FEC_TCR_FDEN, fep->fec[0] + FEC_X_CNTRL);
 	writel(MCF_FEC_TCR_FDEN, fep->fec[1] + FEC_X_CNTRL);
-#endif
 
-
-
-#if 0
 	/* ECR */
-#ifdef CONFIG_ENHANCED_BD
-	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
-	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
-#else
-	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN;
-	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN;
-#endif
-
-#else
-
+// #ifdef CONFIG_ENHANCED_BD
+//	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
+//	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
+//#else
+//	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN;
+//	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN;
+//#endif
 
 #ifdef CONFIG_ENHANCED_BD
-	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588, fep->fec[0] + FEC_ECNTRL);
-	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588, fep->fec[1] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588 |MCF_FEC_ECR_SWAP, fep->fec[0] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588 |MCF_FEC_ECR_SWAP, fep->fec[1] + FEC_ECNTRL);
 #else
-	writel(MCF_FEC_ECR_ETHER_EN , fep->fec[0] + FEC_ECNTRL);
-	writel(MCF_FEC_ECR_ETHER_EN , fep->fec[1] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN |MCF_FEC_ECR_SWAP, fep->fec[0] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN |MCF_FEC_ECR_SWAP, fep->fec[1] + FEC_ECNTRL);
 #endif
 
-#endif
 
 
-#if 0
-	MCF_FEC_MSCR0 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
-	MCF_FEC_MSCR1 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
+//	MCF_FEC_MSCR0 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
+//	MCF_FEC_MSCR1 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
 
-	MCF_FEC_EIMR0 = FEC_ENET_TXF | FEC_ENET_RXF;
-	MCF_FEC_EIMR1 = FEC_ENET_TXF | FEC_ENET_RXF;
+//	MCF_FEC_EIMR0 = FEC_ENET_TXF | FEC_ENET_RXF;
+//	MCF_FEC_EIMR1 = FEC_ENET_TXF | FEC_ENET_RXF;
 	/*MCF_PPMHR0*/
-	MCF_PPMCR0 = 0;
-#else
+//	MCF_PPMCR0 = 0;
 	writel( MVF_MII_SWITCH_SPEED, fep->fec[0] + FEC_MII_SPEED);
 	writel( MVF_MII_SWITCH_SPEED, fep->fec[1] + FEC_MII_SPEED);
 	writel( FEC_ENET_TXF | FEC_ENET_RXF, fep->fec[0] + FEC_IMASK);
 	writel( FEC_ENET_TXF | FEC_ENET_RXF, fep->fec[1] + FEC_IMASK);
 
-//	MCF_PPMCR0 = 0;
-//	writel( , fep->fec[0] + );
-	#pragma message "need fix!!!!!"
-#endif
-
-
+	for (i = 0; i < SWITCH_EPORT_NUMBER; i++) {
+		adjust_phy_speed(fep, i);
+	}
 }
 
 #ifdef CONFIG_ARCH_MVF
@@ -4006,7 +4027,11 @@ int __init switch_enet_init(struct net_device *dev,
 
 	/* Allocate memory for buffer descriptors.
 	*/
+//#ifdef TOMOICHI_DMA_MOVE
+//	mem_addr = dma_alloc_coherent(NULL, PAGE_SIZE, &fep->bd_dma, GFP_KERNEL);
+//#else
 	mem_addr = __get_free_page(GFP_DMA);
+//#endif
 	if (mem_addr == 0) {
 		printk(KERN_ERR "Switch: allocate descriptor memory failed?\n");
 		return -ENOMEM;
@@ -4026,7 +4051,7 @@ int __init switch_enet_init(struct net_device *dev,
 	fep->index = slot;
 	fep->hwp = fecp;
 #ifdef CONFIG_ARCH_MVF
-	fep->hwentry =  (eswAddrTable_t *)ioremap(plat->switch_hw[1], SZ_4K);
+	fep->hwentry =  (eswAddrTable_t *)ioremap(plat->switch_hw[1], SZ_16K);
 #else
 	fep->hwentry = (eswAddrTable_t *)plat->switch_hw[1];
 #endif
@@ -4108,6 +4133,7 @@ int __init switch_enet_init(struct net_device *dev,
 		for (j = 0; j < SWITCH_ENET_RX_FRPPG; j++) {
 			bdp->cbd_sc = BD_ENET_RX_EMPTY;
 			bdp->cbd_bufaddr = __pa(mem_addr);
+
 #ifdef CONFIG_ENHANCED_BD
 			bdp->bdu = 0x00000000;
 			bdp->ebd_status = RX_BD_INT;
@@ -4185,6 +4211,7 @@ int __init switch_enet_init(struct net_device *dev,
 	fecp->switch_imask  = MCF_ESW_IMR_RXB | MCF_ESW_IMR_TXB |
 		MCF_ESW_IMR_RXF | MCF_ESW_IMR_TXF;
 	esw_clear_atable(fep);
+
 	/* Queue up command to detect the PHY and initialize the
 	 * remainder of the interface.
 	 */
@@ -4214,14 +4241,10 @@ switch_restart(struct net_device *dev, int duplex)
 	fep = netdev_priv(dev);
 	fecp = fep->hwp;
 	plat = fep->pdev->dev.platform_data;
+
 	/* Whack a reset.  We should wait for this.*/
-#if 0
-	MCF_FEC_ECR0 = 1;
-	MCF_FEC_ECR1 = 1;
-#else
 	writel(1, fep->fec[0] + FEC_ECNTRL);
 	writel(1, fep->fec[1] + FEC_ECNTRL);
-#endif
 
 	udelay(10);
 
@@ -4343,6 +4366,11 @@ switch_stop(struct net_device *dev)
 	udelay(10);
 }
 
+static int mvf_fec_mdio_reset(struct mii_bus *bus)
+{
+	return 0;
+}
+
 static int fec_mdio_register(struct net_device *dev,
 	int slot)
 {
@@ -4366,8 +4394,9 @@ static int fec_mdio_register(struct net_device *dev,
 			"support more than 2 mii bus\n");
 	}
 
-	fep->mdio_bus->read = &mvf_fec_mdio_read;
-	fep->mdio_bus->write = &mvf_fec_mdio_write;
+	fep->mdio_bus->read = mvf_fec_mdio_read;
+	fep->mdio_bus->write = mvf_fec_mdio_write;
+	fep->mdio_bus->reset = mvf_fec_mdio_reset;
 	fep->mdio_bus->priv = dev;
 	err = mdiobus_register(fep->mdio_bus);
 	if (err) {
@@ -4387,7 +4416,6 @@ static int __init eth_switch_probe(struct platform_device *pdev)
 	struct net_device *dev;
 	int i, err;
 	struct switch_enet_private *fep;
-
 	struct switch_platform_private *chip;
 	struct task_struct *task;
 
@@ -4401,6 +4429,23 @@ static int __init eth_switch_probe(struct platform_device *pdev)
 			(unsigned int)chip);
 		return err;
 	}
+	chip->fec0 = clk_get(&pdev->dev, "fec_clk");
+	chip->fec1 = clk_get(&pdev->dev, "fec1_clk");
+	chip->l2sw = clk_get(&pdev->dev, "eth_l2_sw_clk");
+
+	if ( IS_ERR( chip->fec0 )) {
+		dev_err(&pdev->dev, "Could not get FEC0 clock \n");
+		return PTR_ERR( chip->fec0);
+	}
+	if ( IS_ERR( chip->fec1 )) {
+		dev_err(&pdev->dev, "Could not get FEC1 clock \n");
+		return PTR_ERR( chip->fec1);
+	}
+	if ( IS_ERR( chip->l2sw )) {
+		dev_err(&pdev->dev, "Could not get L2 Switch clock \n");
+		return PTR_ERR( chip->l2sw);
+	}
+
 
 	chip->pdev = pdev;
 	chip->num_slots = SWITCH_MAX_PORTS;
@@ -4449,6 +4494,7 @@ static int __init eth_switch_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 #endif
+
 		/* setup timer for Learning Aging function */
 		init_timer(&fep->timer_aging);
 		fep->timer_aging.function = l2switch_aging_timer;
@@ -4499,6 +4545,9 @@ static int eth_switch_remove(struct platform_device *pdev)
 
 			del_timer_sync(&fep->timer_aging);
 		}
+		clk_disable( chip->fec0);
+		clk_disable( chip->fec1);
+		clk_disable( chip->l2sw);
 
 		platform_set_drvdata(pdev, NULL);
 		kfree(chip);

@@ -112,7 +112,7 @@ int lpt_enable_timer( int timer_handle)
 	//	must not be altered.
 	val = readl(membase + LPTMR_CSR_OFFSET);
 	val |= ( LPTMR_CSR_TEN|LPTMR_CSR_TIE);
-	writel( val, membase + LPTMR_CSR_TEN);
+	writel( val, membase + LPTMR_CSR_OFFSET);
 
  	return 0;
 }
@@ -142,7 +142,7 @@ int lpt_disable_timer( int timer_handle)
 	//	including the CNR and TCF.
 	val = readl(membase + LPTMR_CSR_OFFSET);
 	val &= ~LPTMR_CSR_TEN;
-	writel( val, membase + LPTMR_CSR_TEN);
+	writel( val, membase + LPTMR_CSR_OFFSET);
 
 	return  0;
 }
@@ -174,6 +174,9 @@ int lpt_read_counter( int timer_handle, unsigned long *counter)
 	}
 	pdev = timer_master_get_pdev(timer_handle);
 	timedevptr = platform_get_drvdata(pdev);
+
+	//	Synchronize temporary reg
+	writel( 0, timedevptr->membase + LPTMR_CNR_OFFSET);
 
 	//	16bit timer
 	*counter = readl( timedevptr->membase + LPTMR_CNR_OFFSET) & 0x0000ffff;
@@ -251,6 +254,11 @@ int lpt_param_set( int timer_handle, struct mvf_lpt_request *req, void (*event_h
 
 	//	compare
 	writel( req->compare_value, membase + LPTMR_CMR_OFFSET);
+#if 0
+printk("register LPTMR_CSR_OFFSET %x\n", readl( timedevptr->membase + LPTMR_CSR_OFFSET));
+printk("register LPTMR_PSR_OFFSET %x\n", readl( timedevptr->membase + LPTMR_PSR_OFFSET));
+printk("register LPTMR_CMR_OFFSET %x\n", readl( timedevptr->membase + LPTMR_CMR_OFFSET));
+#endif
 
 	timedevptr->event_handler = event_handler;
 	timedevptr->configured++;
@@ -272,7 +280,7 @@ int lpt_probe(struct platform_device *pdev)
 	struct resource *lptmr_membase, *lptmr_irq;
 	struct mvf_lpt_dev *timedevptr;
 
-	lptmr_membase = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	lptmr_membase = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	lptmr_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 
 	if (!lptmr_irq || !lptmr_membase){
@@ -309,6 +317,8 @@ int lpt_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, timedevptr);
 
 	timer_master_register_platform(pdev);
+
+	printk (KERN_INFO "Low Power Timer Driver Installed.\n");
 
 	return 0;
 }

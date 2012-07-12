@@ -115,7 +115,13 @@ int pit_enable_timer( int timer_handle)
 
 	membase = timedevptr->membase;
 
-	writel( PIT_TFLG_TIF, timedevptr->membase + PIT_TFLG_OFFSET( i));
+//	writel( PIT_TFLG_TIF, timedevptr->membase + PIT_TFLG_OFFSET( i));
+
+	//	enable timer Int
+	val =  PIT_TCTR_TIE;
+	writel( val, membase + PIT_TCTRL_OFFSET( i));
+
+	//	enable timer 
 	val = PIT_TCTR_TEN | PIT_TCTR_TIE;
 	writel( val, membase + PIT_TCTRL_OFFSET( i));
 
@@ -195,7 +201,6 @@ int pit_param_set( int timer_handle, unsigned long load_val, void (*event_handle
 	struct platform_device *pdev;
 	struct mvf_pit_dev *timedevptr;
 	
-
 	if ( !timer_master_is_opened( timer_handle)){
 		return -EAGAIN;
 	}
@@ -227,12 +232,12 @@ int pit_probe(struct platform_device *pdev)
 {
 	int size;
 	int result;
-	int i;
+	int i, init_start;
 	unsigned long val;
 	struct resource *pit_membase, *pit_irq;
 	struct mvf_pit_dev *timedevptr;
 
-	pit_membase = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	pit_membase = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	pit_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 
 	if (!pit_irq || !pit_membase){
@@ -278,10 +283,26 @@ int pit_probe(struct platform_device *pdev)
 		//	timer clock start
 		writel( 0, timedevptr->membase + PIT_MCR_OFFSET);
 	}else{
-		//	assume PIT 0 is kernel system tick
+#ifdef CONFIG_MVF_USE_PIT
 		pit_alloc_timer( PIT0);
-		printk(KERN_WARNING"Maybe PIT0 is system tick\n");
+		printk(KERN_WARNING"PIT0 is system tick.\n");
+#endif
 	}
+
+	//	init timer
+#ifdef CONFIG_MVF_USE_PIT
+	//	init from pit1
+	init_start = 1;
+#else
+	//	init from pit0
+	init_start = 0;
+#endif
+
+	for ( i = init_start; i < TIMER_MASTER_MAX_TIMER; i ++){
+		writel( 0, timedevptr->membase + PIT_TCTRL_OFFSET( i));
+
+	}
+	printk (KERN_INFO "Periodic Timer Driver Installed.\n");
 
 	return 0;
 }
@@ -293,7 +314,7 @@ static int __devexit pit_remove(struct platform_device *pdev)
 	timedevptr = platform_get_drvdata(pdev);
 
 	//	disable all
-	pit_disable_timer( 0);
+//	pit_disable_timer( 0);
 	clk_disable( timedevptr->clk);
 	kfree( timedevptr);
 

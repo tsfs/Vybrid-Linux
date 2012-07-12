@@ -56,11 +56,15 @@ void mvf_init_irq(void)
 	struct irq_desc *desc;
 	unsigned int i;
 	void __iomem *mscm_base = MVF_IO_ADDRESS(MVF_MSCM_BASE_ADDR);
+	void __iomem *ddrmc_base = MVF_IO_ADDRESS(MVF_DDRMC_BASE_ADDR);
 
 	/* Interrupt Ruter Shared Peripheral */
 	for ( i = 0;i < 112;i++) {
 		__raw_writew(0x01,mscm_base + 0x880 + (i<<1));
 	}
+
+	/* mask DDR Interrupt */
+	__raw_writel(0x1FFFFFFF, ddrmc_base + 0x148);
 
 	/* start offset if global timer irq id, which is 27.
 	 * ID table:

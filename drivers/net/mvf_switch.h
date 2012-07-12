@@ -62,63 +62,6 @@
 #error "L2SWITCH: descriptor ring size constants too large"
 #endif
 
-/*unsigned long MCF_ESW_LOOKUP_MEM;*/
-#if 0
-#define MCF_ESW_REVISION   (*(volatile unsigned long *)(0xFC0DC000))
-#define MCF_ESW_PER        (*(volatile unsigned long *)(0xFC0DC008))
-#define MCF_ESW_VLANV      (*(volatile unsigned long *)(0xFC0DC010))
-#define MCF_ESW_DBCR       (*(volatile unsigned long *)(0xFC0DC014))
-#define MCF_ESW_DMCR       (*(volatile unsigned long *)(0xFC0DC018))
-#define MCF_ESW_BKLR       (*(volatile unsigned long *)(0xFC0DC01C))
-#define MCF_ESW_BMPC       (*(volatile unsigned long *)(0xFC0DC020))
-#define MCF_ESW_MODE       (*(volatile unsigned long *)(0xFC0DC024))
-
-#define MCF_ESW_ISR        (*(volatile unsigned long *)(0xFC0DC400))
-#define MCF_ESW_IMR        (*(volatile unsigned long *)(0xFC0DC404))
-#define MCF_ESW_TDAR       (*(volatile unsigned long *)(0xFC0DC418))
-#define MCF_ESW_LOOKUP_MEM (*(volatile unsigned long *)(0xFC0E0000))
-
-#define MCF_PPMCR0   (*(volatile unsigned short *)(0xFC04002D))
-#define MCF_PPMHR0   (*(volatile unsigned long *)(0xFC040030))
-#endif
-
-#if 0
-//	for compile
-#define MCF_FEC_EIR0       (*(volatile unsigned long *)(0xFC0D4004))
-#define MCF_FEC_EIR1       (*(volatile unsigned long *)(0xFC0D8004))
-#define MCF_FEC_EIMR0      (*(volatile unsigned long *)(0xFC0D4008))
-#define MCF_FEC_EIMR1      (*(volatile unsigned long *)(0xFC0D8008))
-#define MCF_FEC_MMFR0      (*(volatile unsigned long *)(0xFC0D4040))
-#define MCF_FEC_MMFR1      (*(volatile unsigned long *)(0xFC0D8040))
-#define MCF_FEC_MSCR0      (*(volatile unsigned long *)(0xFC0D4044))
-#define MCF_FEC_MSCR1      (*(volatile unsigned long *)(0xFC0D8044))
-#define MCF_FEC_RCR0       (*(volatile unsigned long *)(0xFC0D4084))
-#define MCF_FEC_RCR1       (*(volatile unsigned long *)(0xFC0D8084))
-#define MCF_FEC_TCR0       (*(volatile unsigned long *)(0xFC0D40C4))
-#define MCF_FEC_TCR1       (*(volatile unsigned long *)(0xFC0D80C4))
-#define MCF_FEC_ECR0       (*(volatile unsigned long *)(0xFC0D4024))
-#define MCF_FEC_ECR1       (*(volatile unsigned long *)(0xFC0D8024))
-#else
-//	from fec.h
-//	#define FEC_R_CNTRL		0x084 /* Receive control reg */
-//	#define FEC_X_CNTRL		0x0c4 /* Transmit Control reg */
-//	#define FEC_IEVENT		0x004 /* Interrupt event reg */
-//	#define FEC_IMASK		0x008 
-//	#define FEC_MII_DATA		0x040 /* MII manage frame reg */
-//	#define FEC_MII_SPEED		0x044 /* MII speed control reg */
-//	#define FEC_ECNTRL		0x024 /* Ethernet control reg */
-
-#endif
-
-#define MCF_FEC_RCR_PROM                (0x00000008)
-#define MCF_FEC_RCR_RMII_MODE           (0x00000100)
-#define MCF_FEC_RCR_MAX_FL(x)           (((x)&0x00003FFF)<<16)
-#define MCF_FEC_RCR_CRC_FWD             (0x00004000)
-#define MCF_FEC_TCR_FDEN                (0x00000004)
-#define MCF_FEC_ECR_ETHER_EN            (0x00000002)
-#define MCF_FEC_ECR_ENA_1588            (0x00000010)
-
-
 /*=============================================================*/
 #define LEARNING_AGING_TIMER (10 * HZ)
 

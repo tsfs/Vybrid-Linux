@@ -49,7 +49,8 @@
 
 #define SWITCH_EPORT_NUMBER	2
 
-#define MVF_MII_SWITCH_SPEED	0x09
+//	2.5MHz + HOLD time
+#define MVF_MII_SWITCH_SPEED	((0x09<<1)|((uint)0x100))
 
 
 //	register offset for fec
@@ -107,99 +108,87 @@ typedef struct l2switch {
 	unsigned long ESW_SCRATCH;
 	unsigned long ESW_PER;
 	unsigned long reserved0[1];
+	//	0x10
 	unsigned long ESW_VLANV;
 	unsigned long ESW_DBCR;
 	unsigned long ESW_DMCR;
 	unsigned long ESW_BKLR;
+	//	0x20
 	unsigned long ESW_BMPC;
 	unsigned long ESW_MODE;
 	unsigned long ESW_VIMSEL;
 	unsigned long ESW_VOMSEL;
+	//	0x30
 	unsigned long ESW_VIMEN;
 	unsigned long ESW_VID;
-	/*from 0x38 0x3C*/
 	unsigned long esw_reserved0[2];
-	unsigned long ESW_MCR;/*0x40*/
+
+	//	0x40
+	unsigned long ESW_MCR;
 	unsigned long ESW_EGMAP;
 	unsigned long ESW_INGMAP;
 	unsigned long ESW_INGSAL;
+
+	//	0x50
 	unsigned long ESW_INGSAH;
 	unsigned long ESW_INGDAL;
 	unsigned long ESW_INGDAH;
 	unsigned long ESW_ENGSAL;
+
+	//	0x60
 	unsigned long ESW_ENGSAH;
 	unsigned long ESW_ENGDAL;
 	unsigned long ESW_ENGDAH;
-	unsigned long ESW_MCVAL;/*0x6C*/
+	unsigned long ESW_MCVAL;
 	/*from 0x70--0x7C*/
 	unsigned long esw_reserved1[4];
-	unsigned long ESW_MMSR;/*0x80*/
+
+	//	0x80
+	unsigned long ESW_MMSR;
 	unsigned long ESW_LMT;
 	unsigned long ESW_LFC;
 	unsigned long ESW_PCSR;
+
+	//	0x90
 	unsigned long ESW_IOSR;
-	unsigned long ESW_QWT;/*0x94*/
-	unsigned long esw_reserved2[1];/*0x98*/
-	unsigned long ESW_P0BCT;/*0x9C*/
+	unsigned long ESW_QWT;
+	unsigned long esw_reserved2[1];
+	unsigned long ESW_P0BCT;
+
+	//	0xa0
 	/*from 0xA0-0xB8*/
 	unsigned long esw_reserved3[7];
-	unsigned long ESW_P0FFEN;/*0xBC*/
-	/*MCF_ESW_PSNP(x)   0xFC0DC0C0+((x-1)*0x004)))  0xC0-0xDC*/
-	/*#define MCF_ESW_PSNP(x)  \
-	   (*(volatile unsigned long*)(0xFC0DC0C0+((x-1)*0x004)))*/
+	unsigned long ESW_P0FFEN;
+
+	//	0xc0-0xdf
 	unsigned long ESW_PSNP[8];
-	/*MCF_ESW_IPSNP(x)  0xFC0DC0E0+((x-1)*0x004)    0xE0-0xFC*/
-	/*#define MCF_ESW_IPSNP(x)  \
-	   (*(volatile unsigned long*)(0xFC0DC0E0+((x-1)*0x004)))*/
+
+	//	0xe0-0xff
 	unsigned long ESW_IPSNP[8];
-	/*port0-port2 VLAN Priority resolution map  0xFC0D_C100-C108*/
-	/*#define MCF_ESW_PVRES(x)  \
-	   (*(volatile unsigned long*)(0xFC0DC100+((x)*0x004)))*/
+
+	//	0x100-0x13f
 	unsigned long ESW_PVRES[3];
-	/*from 0x10C-0x13C*/
 	unsigned long esw_reserved4[13];
-	unsigned long ESW_IPRES;/*0x140*/
-	/*from 0x144-0x17C*/
+
+	//	0x140
+	unsigned long ESW_IPRES;
 	unsigned long esw_reserved5[15];
 
-	/*port0-port2 Priority Configuration  0xFC0D_C180-C188*/
-	/*#define MCF_ESW_PRES(x)   \
-	    (*(volatile unsigned long*)(0xFC0DC180+((x)*0x004)))*/
 	unsigned long ESW_PRES[3];
-	/*from 0x18C-0x1FC*/
 	unsigned long esw_reserved6[29];
 
-	/*port0-port2 VLAN ID 0xFC0D_C200-C208*/
-	/*#define MCF_ESW_PID(x)   \
-	    (*(volatile unsigned long*)(0xFC0DC200+((x)*0x004)))*/
 	unsigned long ESW_PID[3];
-	/*from 0x20C-0x27C*/
 	unsigned long esw_reserved7[29];
 
-	/*port0-port2 VLAN domain resolution entry 0xFC0D_C280-C2FC*/
-	/*#define MCF_ESW_VRES(x)  \
-	    (*(volatile unsigned long*)(0xFC0DC280+((x)*0x004)))*/
 	unsigned long ESW_VRES[32];
 
-	unsigned long ESW_DISCN;/*0x300*/
+	unsigned long ESW_DISCN;
 	unsigned long ESW_DISCB;
 	unsigned long ESW_NDISCN;
-	unsigned long ESW_NDISCB;/*0xFC0DC30C*/
-	/*per port statistics 0xFC0DC310_C33C*/
-	/*#define MCF_ESW_POQC(x)   \
-	    (*(volatile unsigned long*)(0xFC0DC310+((x)*0x010)))
-	#define MCF_ESW_PMVID(x)  \
-	    (*(volatile unsigned long*)(0xFC0DC314+((x)*0x010)))
-	#define MCF_ESW_PMVTAG(x) \
-	    (*(volatile unsigned long*)(0xFC0DC318+((x)*0x010)))
-	#define MCF_ESW_PBL(x)    \
-	    (*(volatile unsigned long*)(0xFC0DC31C+((x)*0x010)))
-	*/
+	unsigned long ESW_NDISCB;
 	esw_port_statistics_status port_statistics_status[3];
-	/*from 0x340-0x400*/
 	unsigned long esw_reserved8[48];
 
-	/*0xFC0DC400---0xFC0DC418*/
 	/*unsigned long MCF_ESW_ISR;*/
 	unsigned long   switch_ievent;             /* Interrupt event reg */
 	/*unsigned long MCF_ESW_IMR;*/
@@ -214,10 +203,8 @@ typedef struct l2switch {
 	unsigned long   fec_r_des_active;       /* Receive descriptor reg */
 	/*unsigned long MCF_ESW_TDAR;*/
 	unsigned long   fec_x_des_active;       /* Transmit descriptor reg */
-	/*from 0x420-0x4FC*/
 	unsigned long esw_reserved9[57];
 
-	/*0xFC0DC500---0xFC0DC508*/
 	unsigned long ESW_LREC0;
 	unsigned long ESW_LREC1;
 	unsigned long ESW_LSR;
@@ -234,12 +221,13 @@ typedef struct l2switchaddrtable {
 
 
 #define MCF_FEC_RCR_PROM                     (0x00000008)
-#define MCF_FEC_RCR_RMII_MODE                (0x00000100)
+#define MCF_FEC_RCR_RMII_MODE                (0x00000104)
 #define MCF_FEC_RCR_MAX_FL(x)                (((x)&0x00003FFF)<<16)
 #define MCF_FEC_RCR_CRC_FWD                  (0x00004000)
 #define MCF_FEC_TCR_FDEN                     (0x00000004)
 #define MCF_FEC_ECR_ETHER_EN                 (0x00000002)
 #define MCF_FEC_ECR_ENA_1588                 (0x00000010)
+#define MCF_FEC_ECR_SWAP                 	 (0x00000100)
 
 typedef struct _eswIOCTL_PORT_CONF {
 	int port;
@@ -607,10 +595,14 @@ struct switch_enet_private {
 	/* Timer for Aging */
 	struct timer_list       timer_aging;
 	int learning_irqhandle_enable;
+
+	dma_addr_t	bd_dma;
+
 };
 
 struct switch_platform_private {
 	struct platform_device  *pdev;
+	struct clk *fec0,*fec1,*l2sw;
 
 	unsigned long           quirks;
 	int                     num_slots;      /* Slots on controller */

@@ -36,6 +36,8 @@
 
 #include <asm/traps.h>
 #include <asm/mvf_switch.h>
+#include <mach/hardware.h>
+#include <asm/mach/arch.h>
 
 #if (defined(CONFIG_SOC_IMX28) || defined(CONFIG_ARCH_MX6)) || defined(CONFIG_ARCH_MVF) \
 				&& defined(CONFIG_FEC_1588)
@@ -44,15 +46,14 @@
 
 
 //	base address
-#define FEC_ETH0		0x400D0000
-#define FEC_ETH1		0x400D1000
-#define L2SWITCH_1		0x400E8000
-
-#pragma message "need fix!!!!! L2SWITCH_ATBL"
-#define L2SWITCH_ATBL	0x400F0000
+//#define FEC_ETH0		0x400D0000
+//#define FEC_ETH1		0x400D1000
+//#define L2SWITCH_1		0x400E8000
+#define L2SWITCH_ATBL	0x400EC000
 
 static unsigned char    switch_mac_default[] = {
-	0x00, 0x04, 0x9F, 0x00, 0xB3, 0x49,
+//	0x00, 0x04, 0x9F, 0x00, 0xB3, 0x49,
+	0xae, 0xc6, 0x09, 0x97, 0x21, 0x01,
 };
 
 static unsigned char switch_mac_addr[6];
@@ -67,92 +68,27 @@ static void switch_request_intrs(struct net_device *dev,
 		char *name;
 		unsigned short irq;
 	} *idp, id[] = {
-		/*{ "esw_isr(EBERR)", 38 },*/
-		{ "esw_isr(RxBuffer)", 39 },
-		{ "esw_isr(RxFrame)", 40 },
-		{ "esw_isr(TxBuffer)", 41 },
-		{ "esw_isr(TxFrame)", 42 },
-		{ "esw_isr(QM)", 43 },
-		{ "esw_isr(P0OutputDiscard)", 44 },
-		{ "esw_isr(P1OutputDiscard)", 45 },
-		{ "esw_isr(P2OutputDiscard)", 46 },
-		{ "esw_isr(LearningRecord)", 47 },
+		{ "esw_isr", MXC_INT_ENET_SWITCH},
 		{ NULL },
 	};
 
 	fep = netdev_priv(dev);
 	/*intrruption L2 ethernet SWITCH */
-	b = 64 + 64 + 64;
 
 	/* Setup interrupt handlers. */
 	for (idp = id; idp->name; idp++) {
-		if (request_irq(b+idp->irq,
-			switch_net_irq_handler, IRQF_DISABLED,
-			idp->name, irq_privatedata) != 0)
+		if (request_irq(idp->irq,
+			switch_net_irq_handler, 0,idp->name, irq_privatedata) != 0)
 			printk(KERN_ERR "FEC: Could not alloc %s IRQ(%d)!\n",
-				idp->name, b+idp->irq);
+				idp->name, idp->irq);
+		printk(KERN_INFO "L2 Switch: %s IRQ(%d)  installed.!\n", idp->name, idp->irq);
 	}
-
-	/* Configure RMII */
-// #if 0
-// 	//	set in u-boot
-// 	MCF_GPIO_PAR_FEC = (MCF_GPIO_PAR_FEC &
-// 		MCF_GPIO_PAR_FEC_FEC_MASK) |
-// 		MCF_GPIO_PAR_FEC_FEC_RMII0FUL_1FUL;
-// 
-// 	MCF_GPIO_PAR_FEC =
-// 		(MCF_GPIO_PAR_FEC &
-// 		MCF_GPIO_PAR_FEC_FEC_MASK) |
-// 		MCF_GPIO_PAR_FEC_FEC_RMII0FUL_1FUL;
-// 
-// 	MCF_GPIO_SRCR_FEC = 0x0F;
-// 
-// 	MCF_GPIO_PAR_SIMP0H =
-// 		(MCF_GPIO_PAR_SIMP0H &
-// 		MCF_GPIO_PAR_SIMP0H_DAT_MASK) |
-// 		MCF_GPIO_PAR_SIMP0H_DAT_GPIO;
-// 
-// 	MCF_GPIO_PDDR_G =
-// 		(MCF_GPIO_PDDR_G &
-// 		MCF_GPIO_PDDR_G4_MASK) |
-// 		MCF_GPIO_PDDR_G4_OUTPUT;
-// 
-// 	MCF_GPIO_PODR_G =
-// 		(MCF_GPIO_PODR_G &
-// 		MCF_GPIO_PODR_G4_MASK);
-// #endif
 }
 
 static void switch_set_mii(struct net_device *dev)
 {
 	struct switch_enet_private *fep = netdev_priv(dev);
 	volatile switch_t *fecp;
-
-// #if 0
-// 	fecp = fep->hwp;
-// 
-// 	MCF_FEC_RCR0 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
-// 			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
-// 	MCF_FEC_RCR1 = (MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE |
-// 			MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD);
-// 	/* TCR */
-// 	MCF_FEC_TCR0 = MCF_FEC_TCR_FDEN;
-// 	MCF_FEC_TCR1 = MCF_FEC_TCR_FDEN;
-// 	/* ECR */
-// #ifdef ENHANCE_BUFFER
-// 	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
-// 	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588;
-// #else /*legac buffer*/
-// 	MCF_FEC_ECR0 = MCF_FEC_ECR_ETHER_EN;
-// 	MCF_FEC_ECR1 = MCF_FEC_ECR_ETHER_EN;
-// #endif
-// 	/*
-// 	* Set MII speed to 2.5 MHz
-// 	*/
-// 	MCF_FEC_MSCR0 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
-// 	MCF_FEC_MSCR1 = ((((MCF_CLK / 2) / (2500000 / 10)) + 5) / 10) * 2;
-// #endif
-// 
 
 	writel((MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE | MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD), fep->fec[0] + FEC_R_CNTRL);
 	writel((MCF_FEC_RCR_PROM | MCF_FEC_RCR_RMII_MODE | MCF_FEC_RCR_MAX_FL(1522) | MCF_FEC_RCR_CRC_FWD), fep->fec[1] + FEC_R_CNTRL);
@@ -161,11 +97,11 @@ static void switch_set_mii(struct net_device *dev)
 	writel(MCF_FEC_TCR_FDEN, fep->fec[1] + FEC_X_CNTRL);
 
 #ifdef CONFIG_ENHANCED_BD
-	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588, fep->fec[0] + FEC_ECNTRL);
-	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588, fep->fec[1] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588 |MCF_FEC_ECR_SWAP, fep->fec[0] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN | MCF_FEC_ECR_ENA_1588 |MCF_FEC_ECR_SWAP, fep->fec[1] + FEC_ECNTRL);
 #else
-	writel(MCF_FEC_ECR_ETHER_EN , fep->fec[0] + FEC_ECNTRL);
-	writel(MCF_FEC_ECR_ETHER_EN , fep->fec[1] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN |MCF_FEC_ECR_SWAP, fep->fec[0] + FEC_ECNTRL);
+	writel(MCF_FEC_ECR_ETHER_EN |MCF_FEC_ECR_SWAP, fep->fec[1] + FEC_ECNTRL);
 #endif
 	writel( MVF_MII_SWITCH_SPEED, fep->fec[0] + FEC_MII_SPEED);
 	writel( MVF_MII_SWITCH_SPEED, fep->fec[1] + FEC_MII_SPEED);
@@ -241,13 +177,13 @@ static void switch_platform_flush_cache(void)
  * Define the fixed address of the FEC hardware.
  */
 static unsigned int switch_platform_hw[] = {
-	L2SWITCH_1,
+	MVF_ETH_L2_SW_BASE_ADDR,
 	L2SWITCH_ATBL,
 };
 
 static unsigned int fec_platform_hw[] = {
-	FEC_ETH0,
-	FEC_ETH1,
+	MVF_ENET0_IEEE1588_BASE_ADDR,
+	MVF_ENET1_IEEE1588_BASE_ADDR,
 };
 
 static struct mvf_switch_platform_data mvf_switch_data = {
@@ -268,18 +204,18 @@ static struct mvf_switch_platform_data mvf_switch_data = {
 //	non-used-structure
 static struct resource l2switch_resources[] = {
 	[0] = {
-		.start  = 0xFC0DC000,
-		.end    = 0xFC0DC508,
+		.start  = MVF_ETH_L2_SW_BASE_ADDR,
+		.end    = MVF_ETH_L2_SW_BASE_ADDR+0x1000 - 1,
 		.flags  = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start  = (64 + 64 + 64 + 38),
-		.end    = (64 + 64 + 64 + 48),
+		.start  = MXC_INT_ENET_SWITCH,
+		.end    = MXC_INT_ENET_SWITCH,
 		.flags  = IORESOURCE_IRQ,
 	},
 	[2] = {
-		.start  = 0xFC0E0000,
-		.end    = 0xFC0E3FFC,
+		.start  = AIPS1_OFF_BASE_ADDR + 0x4F000,
+		.end    = AIPS1_OFF_BASE_ADDR + 0x4F000 + 0x1000 - 1,
 		.flags  = IORESOURCE_MEM,
 	},
 };
@@ -314,12 +250,13 @@ static int __init param_switch_addr_setup(char *str)
 {
 	char *end;
 	int i;
-
+#if 0
 	for (i = 0; i < 6; i++) {
 		switch_mac_addr[i] = str ? simple_strtoul(str, &end, 16) : 0;
 		if (str)
 			str = (*end ) ? end + 1 : end;
 	}
+#endif
 	return 0;
 }
 __setup("switchaddr=", param_switch_addr_setup);
