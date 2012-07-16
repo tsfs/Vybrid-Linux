@@ -329,8 +329,8 @@
 #define MXC_INT_DDRMC			58
 #define MXC_INT_SDHC0			59
 #define MXC_INT_SDHC1			60
-#define MXC_INT_DCU0			62
-#define MXC_INT_DCU1			63
+#define MVF_INT_DCU0			62
+#define MVF_INT_DCU1			63
 #define MXC_INT_VIU			64
 #define MXC_INT_GPU			66
 #define MXC_INT_RLE			67

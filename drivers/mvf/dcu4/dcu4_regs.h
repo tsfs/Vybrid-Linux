@@ -1,0 +1,722 @@
+/*
+ * Copyright (C) 2005-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ */
+
+/*
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/*
+ * @file dcu4_regs.h
+ *
+ * @brief DCU Register definitions
+ *
+ * @ingroup DCU
+ */
+#ifndef __DCU4_REGS_INCLUDED__
+#define __DCU4_REGS_INCLUDED__
+
+/* DCU - Internal RAM Offsets */
+#define DCU_CLUT_OFFSET						0x00002000
+#define DCU_GAMMARED_OFFSET					0x00004000
+#define DCU_GAMMAGREEN_OFFSET				0x00004400
+#define DCU_GAMMABLUE_OFFSET				0x00004800
+#define DCU_CURSOR_OFFSET					0x00004C00
+
+/* DCU - Register offsets */
+#define DCU_CTRLDESCCURSOR1_OFFSET      (0x00000000/4)
+#define DCU_CTRLDESCCURSOR2_OFFSET      (0x00000004/4)
+#define DCU_CTRLDESCCURSOR3_OFFSET      (0x00000008/4)
+#define DCU_CTRLDESCCURSOR4_OFFSET      (0x0000000C/4)
+#define DCU_DCU_MODE_OFFSET             (0x00000010/4)
+#define DCU_BGND_OFFSET                 (0x00000014/4)
+#define DCU_DISP_SIZE_OFFSET            (0x00000018/4)
+#define DCU_HSYN_PARA_OFFSET            (0x0000001C/4)
+#define DCU_VSYN_PARA_OFFSET            (0x00000020/4)
+#define DCU_SYNPOL_OFFSET               (0x00000024/4)
+#define DCU_THRESHOLD_OFFSET            (0x00000028/4)
+#define DCU_INT_STATUS_OFFSET           (0x0000002C/4)
+#define DCU_INT_MASK_OFFSET             (0x00000030/4)
+#define DCU_COLBAR_1_OFFSET             (0x00000034/4)
+#define DCU_COLBAR_2_OFFSET             (0x00000038/4)
+#define DCU_COLBAR_3_OFFSET             (0x0000003C/4)
+#define DCU_COLBAR_4_OFFSET             (0x00000040/4)
+#define DCU_COLBAR_5_OFFSET             (0x00000044/4)
+#define DCU_COLBAR_6_OFFSET             (0x00000048/4)
+#define DCU_COLBAR_7_OFFSET             (0x0000004C/4)
+#define DCU_COLBAR_8_OFFSET             (0x00000050/4)
+#define DCU_DIV_RATIO_OFFSET            (0x00000054/4)
+#define DCU_SIGN_CALC_1_OFFSET          (0x00000058/4)
+#define DCU_SIGN_CALC_2_OFFSET          (0x0000005C/4)
+#define DCU_CRC_VAL_OFFSET              (0x00000060/4)
+#define DCU_PARR_ERR_STATUS1_OFFSET     (0x0000006C/4)
+#define DCU_PARR_ERR_STATUS2_OFFSET     (0x00000070/4)
+#define DCU_PARR_ERR_STATUS3_OFFSET     (0x0000007C/4)
+#define DCU_MASK_PARR_ERR_STATUS1_OFFSET (0x00000080/4)
+#define DCU_MASK_PARR_ERR_STATUS2_OFFSET (0x00000084/4)
+#define DCU_MASK_PARR_ERR_STATUS3_OFFSET (0x00000090/4)
+#define DCU_THRESHOLD_INP_BUF_1_OFFSET  (0x00000094/4)
+#define DCU_THRESHOLD_INP_BUF_2_OFFSET  (0x00000098/4)
+#define DCU_THRESHOLD_INP_BUF_3_OFFSET  (0x0000009C/4)
+#define DCU_LUMA_COMP_OFFSET            (0x000000A0/4)
+#define DCU_CHROMA_RED_OFFSET           (0x000000A4/4)
+#define DCU_CHROMA_GREEN_OFFSET         (0x000000A8/4)
+#define DCU_CHROMA_BLUE_OFFSET          (0x000000AC/4)
+#define DCU_CRC_POS_OFFSET              (0x000000B0/4)
+#define DCU_LYR_INTPOL_EN_OFFSET        (0x000000B4/4)
+#define DCU_LYR_LUMA_COMP_OFFSET        (0x000000B8/4)
+#define DCU_LYR_CHROMA_RED_OFFSET       (0x000000BC/4)
+#define DCU_LYR_CHROMA_GREEN_OFFSET     (0x000000C0/4)
+#define DCU_LYR_CHROMA_BLUE_OFFSET      (0x000000C4/4)
+#define DCU_COMP_IMSIZE_OFFSET          (0x000000C8/4)
+#define DCU_UPDATE_MODE_OFFSET          (0x000000CC/4)
+#define DCU_UNDERRUN_OFFSET             (0x000000D0/4)
+
+#define DCU_LAYER_CTRLDESC_BASE				(0x00000200/4)
+#define DCU_CTRLDESCLx_OFFSET(LayerNum)		(DCU_LAYER_CTRLDESC_BASE + LayerNum*16)
+#define DCU_CTRLDESCLx_y_OFFSET(LayerNum,RegisterOffset)	(DCU_CTRLDESCLx_OFFSET(LayerNum) + RegisterOffset)
+#define DCU_CTRLDESCL_OFFSET1			(0)
+#define DCU_CTRLDESCL_OFFSET2			(1)
+#define DCU_CTRLDESCL_OFFSET3			(2)
+#define DCU_CTRLDESCL_OFFSET4			(3)
+#define DCU_CTRLDESCL_OFFSET5			(4)
+#define DCU_CTRLDESCL_OFFSET6			(5)
+#define DCU_CTRLDESCL_OFFSET7			(6)
+#define DCU_CTRLDESCL_OFFSET8			(7)
+#define DCU_CTRLDESCL_OFFSET9			(8)
+#define DCU_CTRLDESCL_OFFSET_MAX		(8)
+
+/* Field definitions for CTRLDESCCURSOR4 */
+#define DCU_CTRLDESCCURSOR4_HWC_BLINK_OFF_SHIFT        (16)
+#define DCU_CTRLDESCCURSOR4_HWC_BLINK_OFF_MASK         ((0x000000FF) << (DCU_CTRLDESCCURSOR4_HWC_BLINK_OFF_SHIFT))
+
+#define DCU_CTRLDESCCURSOR4_EN_BLINK_SHIFT             (8)
+#define DCU_CTRLDESCCURSOR4_EN_BLINK_MASK              ((1) << (DCU_CTRLDESCCURSOR4_EN_BLINK_SHIFT))
+
+#define DCU_CTRLDESCCURSOR4_HWC_BLINK_ON_SHIFT         (0)
+#define DCU_CTRLDESCCURSOR4_HWC_BLINK_ON_MASK          ((0x000000FF) << (DCU_CTRLDESCCURSOR4_HWC_BLINK_ON_SHIFT))
+
+
+
+/* Field definitions for DCU_MODE */
+#define DCU_DCU_MODE_DCU_SW_RESET_SHIFT         (31)
+#define DCU_DCU_MODE_DCU_SW_RESET_MASK          ((1) << (DCU_DCU_MODE_DCU_SW_RESET_SHIFT))
+
+#define DCU_DCU_MODE_EN_DITHER_SHIFT         (30)
+#define DCU_DCU_MODE_EN_DITHER_MASK          ((1) << (DCU_DCU_MODE_EN_DITHER_SHIFT))
+
+#define DCU_DCU_MODE_ADDB_SHIFT         (28)
+#define DCU_DCU_MODE_ADDB_MASK          ((0x00000003) << (DCU_DCU_MODE_ADDB_SHIFT))
+
+#define DCU_DCU_MODE_ADDG_SHIFT         (26)
+#define DCU_DCU_MODE_ADDG_MASK          ((0x00000003) << (DCU_DCU_MODE_ADDG_SHIFT))
+
+#define DCU_DCU_MODE_ADDR_SHIFT         (24)
+#define DCU_DCU_MODE_ADDR_MASK          ((0x00000003) << (DCU_DCU_MODE_ADDR_SHIFT))
+
+#define DCU_DCU_MODE_DDR_MODE_SHIFT         (23)
+#define DCU_DCU_MODE_DDR_MODE_MASK          ((1) << (DCU_DCU_MODE_DDR_MODE_SHIFT))
+
+#define DCU_DCU_MODE_BLEND_ITER_SHIFT         (20)
+#define DCU_DCU_MODE_BLEND_ITER_MASK          ((0x00000007) << (DCU_DCU_MODE_BLEND_ITER_SHIFT))
+
+#define DCU_DCU_MODE_RASTER_EN_SHIFT            (14)
+#define DCU_DCU_MODE_RASTER_EN_MASK             ((1) << (DCU_DCU_MODE_RASTER_EN_SHIFT))
+
+#define DCU_DCU_MODE_TAG_EN_SHIFT               (6)
+#define DCU_DCU_MODE_TAG_EN_MASK                ((1) << (DCU_DCU_MODE_TAG_EN_SHIFT))
+
+#define DCU_DCU_MODE_SIG_EN_SHIFT               (5)
+#define DCU_DCU_MODE_SIG_EN_MASK                ((1) << (DCU_DCU_MODE_SIG_EN_SHIFT))
+
+#define DCU_DCU_MODE_EN_GAMMA_SHIFT             (2)
+#define DCU_DCU_MODE_EN_GAMMA_MASK              ((1) << (DCU_DCU_MODE_EN_GAMMA_SHIFT))
+
+#define DCU_DCU_MODE_DCU_MODE_SHIFT             (0)
+#define DCU_DCU_MODE_DCU_MODE_MASK              ((0x00000003) << (DCU_DCU_MODE_DCU_MODE_SHIFT))
+
+
+
+/* Field definitions for BGND */
+#define DCU_BGND_BGND_R_SHIFT               (16)
+#define DCU_BGND_BGND_R_MASK                ((0x000000FF) << (DCU_BGND_BGND_R_SHIFT))
+
+#define DCU_BGND_BGND_G_SHIFT               (8)
+#define DCU_BGND_BGND_G_MASK                ((0x000000FF) << (DCU_BGND_BGND_G_SHIFT))
+
+#define DCU_BGND_BGND_B_SHIFT               (0)
+#define DCU_BGND_BGND_B_MASK                ((0x000000FF) << (DCU_BGND_BGND_B_SHIFT))
+
+
+
+/* Field definitions for DISP_SIZE */
+#define DCU_DISP_SIZE_DELTA_Y_SHIFT              (16)
+#define DCU_DISP_SIZE_DELTA_Y_MASK               ((0x000007FF) << (DCU_DISP_SIZE_DELTA_Y_SHIFT))
+
+#define DCU_DISP_SIZE_DELTA_X_SHIFT              (0)
+#define DCU_DISP_SIZE_DELTA_X_MASK               ((0x0000007F) << (DCU_DISP_SIZE_DELTA_X_SHIFT))
+
+
+
+/* Field definitions for HSYN_PARA */
+#define DCU_HSYN_PARA_BP_H_SHIFT                 (22)
+#define DCU_HSYN_PARA_BP_H_MASK                  ((0x000001FF) << (DCU_HSYN_PARA_BP_H_SHIFT))
+
+#define DCU_HSYN_PARA_PW_H_SHIFT                 (11)
+#define DCU_HSYN_PARA_PW_H_MASK                  ((0x000001FF) << (DCU_HSYN_PARA_PW_H_SHIFT))
+
+#define DCU_HSYN_PARA_FP_H_SHIFT                 (0)
+#define DCU_HSYN_PARA_FP_H_MASK                  ((0x000001FF) << (DCU_HSYN_PARA_FP_H_SHIFT))
+
+
+
+/* Field definitions for VSYN_PARA */
+#define DCU_VSYN_PARA_BP_V_SHIFT                 (22)
+#define DCU_VSYN_PARA_BP_V_MASK                  ((0x000001FF) << (DCU_VSYN_PARA_BP_V_SHIFT))
+
+#define DCU_VSYN_PARA_PW_V_SHIFT                 (11)
+#define DCU_VSYN_PARA_PW_V_MASK                  ((0x000001FF) << (DCU_VSYN_PARA_PW_V_SHIFT))
+
+#define DCU_VSYN_PARA_FP_V_SHIFT                 (0)
+#define DCU_VSYN_PARA_FP_V_MASK                  ((0x000001FF) << (DCU_VSYN_PARA_FP_V_SHIFT))
+
+
+
+/* Field definitions for SYNPOL */
+#define DCU_SYNPOL_INV_PXCK_SHIFT             (6)
+#define DCU_SYNPOL_INV_PXCK_MASK              ((1) << (DCU_SYNPOL_INV_PXCK_SHIFT))
+
+#define DCU_SYNPOL_NEG_SHIFT                  (5)
+#define DCU_SYNPOL_NEG_MASK                   ((1) << (DCU_SYNPOL_NEG_SHIFT))
+
+#define DCU_SYNPOL_INV_VS_SHIFT               (1)
+#define DCU_SYNPOL_INV_VS_MASK                ((1) << (DCU_SYNPOL_INV_VS_SHIFT))
+
+#define DCU_SYNPOL_INV_HS_SHIFT               (0)
+#define DCU_SYNPOL_INV_HS_MASK                ((1) << (DCU_SYNPOL_INV_HS_SHIFT))
+
+
+
+/* Field definitions for THRESHOLD */
+#define DCU_THRESHOLD_LS_BF_VS_SHIFT             (16)
+#define DCU_THRESHOLD_LS_BF_VS_MASK              ((0x000003FF) << (DCU_THRESHOLD_LS_BF_VS_SHIFT))
+
+#define DCU_THRESHOLD_OUT_BUF_HIGH_SHIFT         (8)
+#define DCU_THRESHOLD_OUT_BUF_HIGH_MASK          ((0x000000FF) << (DCU_THRESHOLD_OUT_BUF_HIGH_SHIFT))
+
+#define DCU_THRESHOLD_OUT_BUF_LOW_SHIFT          (0)
+#define DCU_THRESHOLD_OUT_BUF_LOW_MASK           ((0x000000FF) << (DCU_THRESHOLD_OUT_BUF_LOW_SHIFT))
+
+
+
+/* Field definitions for INT_STATUS */
+#define DCU_INT_STATUS_P6_EMPTY_SHIFT      (31)
+#define DCU_INT_STATUS_P6_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P6_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P5_EMPTY_SHIFT      (30)
+#define DCU_INT_STATUS_P5_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P5_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P4_EMPTY_SHIFT      (29)
+#define DCU_INT_STATUS_P4_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P4_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P3_EMPTY_SHIFT      (28)
+#define DCU_INT_STATUS_P3_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P3_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P2_EMPTY_SHIFT      (27)
+#define DCU_INT_STATUS_P2_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P2_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P1_EMPTY_SHIFT      (26)
+#define DCU_INT_STATUS_P1_EMPTY_MASK       ((1) << (DCU_INT_STATUS_P1_EMPTY_SHIFT))
+
+#define DCU_INT_STATUS_P6_FIFO_HI_FLAG_SHIFT      (23)
+#define DCU_INT_STATUS_P6_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P6_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P6_FIFO_LO_FLAG_SHIFT      (22)
+#define DCU_INT_STATUS_P6_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P6_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P5_FIFO_HI_FLAG_SHIFT      (21)
+#define DCU_INT_STATUS_P5_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P5_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P5_FIFO_LO_FLAG_SHIFT      (20)
+#define DCU_INT_STATUS_P5_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P5_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P4_FIFO_HI_FLAG_SHIFT      (19)
+#define DCU_INT_STATUS_P4_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P4_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P4_FIFO_LO_FLAG_SHIFT      (18)
+#define DCU_INT_STATUS_P4_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P4_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P3_FIFO_HI_FLAG_SHIFT      (17)
+#define DCU_INT_STATUS_P3_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P3_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P3_FIFO_LO_FLAG_SHIFT      (16)
+#define DCU_INT_STATUS_P3_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P3_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_DMA_TRANS_FINISH_SHIFT     (14)
+#define DCU_INT_STATUS_DMA_TRANS_FINISH_MASK      ((1) << (DCU_INT_STATUS_DMA_TRANS_FINISH_SHIFT))
+
+#define DCU_INT_STATUS_LYR_TRANS_FINISH_SHIFT     (12)
+#define DCU_INT_STATUS_LYR_TRANS_FINISH_MASK      ((1) << (DCU_INT_STATUS_LYR_TRANS_FINISH_SHIFT))
+#define DCU_INT_STATUS_IPM_ERROR_SHIFT            (11)
+#define DCU_INT_STATUS_IPM_ERROR_MASK             ((1) << (DCU_INT_STATUS_IPM_ERROR_SHIFT))
+
+#define DCU_INT_STATUS_PROG_END_SHIFT             (10)
+#define DCU_INT_STATUS_PROG_END_MASK              ((1) << (DCU_INT_STATUS_PROG_END_SHIFT))
+
+#define DCU_INT_STATUS_P2_FIFO_HI_FLAG_SHIFT      (9)
+#define DCU_INT_STATUS_P2_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P2_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P2_FIFO_LO_FLAG_SHIFT      (8)
+#define DCU_INT_STATUS_P2_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P2_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P1_FIFO_HI_FLAG_SHIFT      (7)
+#define DCU_INT_STATUS_P1_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_STATUS_P1_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_P1_FIFO_LO_FLAG_SHIFT      (6)
+#define DCU_INT_STATUS_P1_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_STATUS_P1_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_STATUS_CRC_OVERFLOW_SHIFT         (5)
+#define DCU_INT_STATUS_CRC_OVERFLOW_MASK          ((1) << (DCU_INT_STATUS_CRC_OVERFLOW_SHIFT))
+
+#define DCU_INT_STATUS_CRC_READY_SHIFT            (4)
+#define DCU_INT_STATUS_CRC_READY_MASK             ((1) << (DCU_INT_STATUS_CRC_READY_SHIFT))
+
+#define DCU_INT_STATUS_VS_BLANK_SHIFT             (3)
+#define DCU_INT_STATUS_VS_BLANK_MASK              ((1) << (DCU_INT_STATUS_VS_BLANK_SHIFT))
+
+#define DCU_INT_STATUS_LS_BF_VS_SHIFT             (2)
+#define DCU_INT_STATUS_LS_BF_VS_MASK              ((1) << (DCU_INT_STATUS_LS_BF_VS_SHIFT))
+
+#define DCU_INT_STATUS_UNDRUN_SHIFT               (1)
+#define DCU_INT_STATUS_UNDRUN_MASK                ((1) << (DCU_INT_STATUS_UNDRUN_SHIFT))
+
+#define DCU_INT_STATUS_VSYNC_SHIFT                (0)
+#define DCU_INT_STATUS_VSYNC_MASK                 ((1) << (DCU_INT_STATUS_VSYNC_SHIFT))
+
+
+
+/* Field definitions for INT_MASK */
+#define DCU_INT_MASK_M_P6_EMPTY_SHIFT      (31)
+#define DCU_INT_MASK_M_P6_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P6_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P5_EMPTY_SHIFT      (30)
+#define DCU_INT_MASK_M_P5_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P5_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P4_EMPTY_SHIFT      (29)
+#define DCU_INT_MASK_M_P4_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P4_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P3_EMPTY_SHIFT      (28)
+#define DCU_INT_MASK_M_P3_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P3_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P2_EMPTY_SHIFT      (27)
+#define DCU_INT_MASK_M_P2_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P2_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P1_EMPTY_SHIFT      (26)
+#define DCU_INT_MASK_M_P1_EMPTY_MASK       ((1) << (DCU_INT_MASK_M_P1_EMPTY_SHIFT))
+
+#define DCU_INT_MASK_M_P6_FIFO_HI_FLAG_SHIFT      (23)
+#define DCU_INT_MASK_M_P6_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_MASK_M_P6_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P6_FIFO_LO_FLAG_SHIFT      (22)
+#define DCU_INT_MASK_M_P6_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_MASK_M_P6_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P5_FIFO_HI_FLAG_SHIFT      (21)
+#define DCU_INT_MASK_M_P5_FIFO_HI_FLAG_MASK       ((1) << (DCU_INT_MASK_M_P5_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P5_FIFO_LO_FLAG_SHIFT      (20)
+#define DCU_INT_MASK_M_P5_FIFO_LO_FLAG_MASK       ((1) << (DCU_INT_MASK_M_P5_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P4_FIFO_HI_FLAG_SHIFT    (19)
+#define DCU_INT_MASK_M_P4_FIFO_HI_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P4_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P4_FIFO_LO_FLAG_SHIFT    (18)
+#define DCU_INT_MASK_M_P4_FIFO_LO_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P4_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P3_FIFO_HI_FLAG_SHIFT    (17)
+#define DCU_INT_MASK_M_P3_FIFO_HI_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P3_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P3_FIFO_LO_FLAG_SHIFT    (16)
+#define DCU_INT_MASK_M_P3_FIFO_LO_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P3_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_DMA_TRANS_FINISH_SHIFT   (14)
+#define DCU_INT_MASK_M_DMA_TRANS_FINISH_MASK    ((1) << (DCU_INT_MASK_M_DMA_TRANS_FINISH_SHIFT))
+
+#define DCU_INT_MASK_M_LYR_TRANS_FINISH_SHIFT   (12)
+#define DCU_INT_MASK_M_LYR_TRANS_FINISH_MASK    ((1) << (DCU_INT_MASK_M_LYR_TRANS_FINISH_SHIFT))
+
+#define DCU_INT_MASK_M_IPM_ERROR_SHIFT          (11)
+#define DCU_INT_MASK_M_IPM_ERROR_MASK           ((1) << (DCU_INT_MASK_M_IPM_ERROR_SHIFT))
+
+#define DCU_INT_MASK_M_PROG_END_SHIFT           (10)
+#define DCU_INT_MASK_M_PROG_END_MASK            ((1) << (DCU_INT_MASK_M_PROG_END_SHIFT))
+
+#define DCU_INT_MASK_M_P2_FIFO_HI_FLAG_SHIFT    (9)
+#define DCU_INT_MASK_M_P2_FIFO_HI_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P2_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P2_FIFO_LO_FLAG_SHIFT    (8)
+#define DCU_INT_MASK_M_P2_FIFO_LO_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P2_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P1_FIFO_HI_FLAG_SHIFT    (7)
+#define DCU_INT_MASK_M_P1_FIFO_HI_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P1_FIFO_HI_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_P1_FIFO_LO_FLAG_SHIFT    (6)
+#define DCU_INT_MASK_M_P1_FIFO_LO_FLAG_MASK     ((1) << (DCU_INT_MASK_M_P1_FIFO_LO_FLAG_SHIFT))
+
+#define DCU_INT_MASK_M_CRC_OVERFLOW_SHIFT       (5)
+#define DCU_INT_MASK_M_CRC_OVERFLOW_MASK        ((1) << (DCU_INT_MASK_M_CRC_OVERFLOW_SHIFT))
+
+#define DCU_INT_MASK_M_CRC_READY_SHIFT          (4)
+#define DCU_INT_MASK_M_CRC_READY_MASK           ((1) << (DCU_INT_MASK_M_CRC_READY_SHIFT))
+
+#define DCU_INT_MASK_M_VS_BLANK_SHIFT           (3)
+#define DCU_INT_MASK_M_VS_BLANK_MASK            ((1) << (DCU_INT_MASK_M_VS_BLANK_SHIFT))
+
+#define DCU_INT_MASK_M_LS_BF_VS_SHIFT           (2)
+#define DCU_INT_MASK_M_LS_BF_VS_MASK            ((1) << (DCU_INT_MASK_M_LS_BF_VS_SHIFT))
+
+#define DCU_INT_MASK_M_UNDRUN_SHIFT             (1)
+#define DCU_INT_MASK_M_UNDRUN_MASK              ((1) << (DCU_INT_MASK_M_UNDRUN_SHIFT))
+
+#define DCU_INT_MASK_M_VSYNC_SHIFT              (0)
+#define DCU_INT_MASK_M_VSYNC_MASK               ((1) << (DCU_INT_MASK_M_VSYNC_SHIFT))
+
+#define DCU_IRQ_MASK(irq)	(1UL << (irq & 0x1F))
+
+/* Field definitions for COLBAR_n */
+#define DCU_COLBAR_n_R_SHIFT           (16)
+#define DCU_COLBAR_n_R_MASK            ((0x000000FF) << (DCU_COLBAR_n_R_SHIFT))
+
+#define DCU_COLBAR_n_G_SHIFT           (8)
+#define DCU_COLBAR_n_G_MASK            ((0x000000FF) << (DCU_COLBAR_n_G_SHIFT))
+
+#define DCU_COLBAR_n_B_SHIFT           (0)
+#define DCU_COLBAR_n_B_MASK            ((0x000000FF) << (DCU_COLBAR_n_B_SHIFT))
+
+
+
+
+/* Field definitions for DIV_RATIO */
+#define DCU_DIV_RATIO_DIV_RATIO_SHIFT            (0)
+#define DCU_DIV_RATIO_DIV_RATIO_MASK             ((0x000000FF) << (DCU_DIV_RATIO_DIV_RATIO_SHIFT))
+
+
+
+/* Field definitions for SIGN_CALC_1 */
+#define DCU_SIGN_CALC_1_SIG_VER_SIZE_SHIFT         (16)
+#define DCU_SIGN_CALC_1_SIG_VER_SIZE_MASK          ((0x000007FF) << (DCU_SIGN_CALC_1_SIG_VER_SIZE_SHIFT))
+
+#define DCU_SIGN_CALC_1_SIG_HOR_SIZE_SHIFT         (0)
+#define DCU_SIGN_CALC_1_SIG_HOR_SIZE_MASK          ((0x000007FF) << (DCU_SIGN_CALC_1_SIG_HOR_SIZE_SHIFT))
+
+
+
+/* Field definitions for SIGN_CALC_2 */
+#define DCU_SIGN_CALC_2_SIG_VER_POS_SHIFT          (16)
+#define DCU_SIGN_CALC_2_SIG_VER_POS_MASK           ((0x000007FF) << (DCU_SIGN_CALC_2_SIG_VER_POS_SHIFT))
+
+#define DCU_SIGN_CALC_2_SIG_HOR_POS_SHIFT          (0)
+#define DCU_SIGN_CALC_2_SIG_HOR_POS_MASK           ((0x000007FF) << (DCU_SIGN_CALC_2_SIG_HOR_POS_SHIFT))
+
+
+
+/* Field definitions for CRC_VAL */
+#define DCU_CRC_VAL_CRC_VAL_SHIFT              (0)
+#define DCU_CRC_VAL_CRC_VAL_MASK               ((0xFFFFFFFF) << (DCU_CRC_VAL_CRC_VAL_SHIFT))
+
+
+
+/* Field definitions for PARR_ERR_STATUS1/2 */
+#define DCU_PARR_ERR_STATUS_Lx_MASK(Layer)		((1) << (Layer % 32))
+
+/* Field definitions for MASK_PARR_ERR_STATUS1/2 */
+#define DCU_MASK_PARR_ERR_STATUS_Lx_MASK(Layer)		((1) << (Layer % 32))
+
+
+/* Field definitions for MASK_PARR_ERR_STATUS3 */
+#define DCU_MASK_PARR_ERR_STATUS3_M_RLE_ERR_SHIFT            (3)
+#define DCU_MASK_PARR_ERR_STATUS3_M_RLE_ERR_MASK             ((1) << (DCU_MASK_PARR_ERR_STATUS3_M_RLE_ERR_SHIFT))
+
+#define DCU_MASK_PARR_ERR_STATUS3_M_HWC_ERR_SHIFT            (2)
+#define DCU_MASK_PARR_ERR_STATUS3_M_HWC_ERR_MASK             ((1) << (DCU_MASK_PARR_ERR_STATUS3_M_HWC_ERR_SHIFT))
+
+#define DCU_MASK_PARR_ERR_STATUS3_M_SIG_ERR_SHIFT            (1)
+#define DCU_MASK_PARR_ERR_STATUS3_M_SIG_ERR_MASK             ((1) << (DCU_MASK_PARR_ERR_STATUS3_M_SIG_ERR_SHIFT))
+
+#define DCU_MASK_PARR_ERR_STATUS3_M_DISP_ERR_SHIFT           (0)
+#define DCU_MASK_PARR_ERR_STATUS3_M_DISP_ERR_MASK            ((1) << (DCU_MASK_PARR_ERR_STATUS3_M_DISP_ERR_SHIFT))
+
+
+
+/* Field definitions for THRESHOLD_INP_BUF_1 */
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_HI_SHIFT        (24)
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_LO_SHIFT        (16)
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_1_INP_BUF_P2_LO_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_HI_SHIFT        (8)
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_LO_SHIFT        (0)
+#define DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_1_INP_BUF_P1_LO_SHIFT))
+
+
+
+/* Field definitions for THRESHOLD_INP_BUF_2 */
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_HI_SHIFT        (24)
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_LO_SHIFT        (16)
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_2_INP_BUF_P4_LO_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_HI_SHIFT        (8)
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_LO_SHIFT        (0)
+#define DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_2_INP_BUF_P3_LO_SHIFT))
+
+
+
+/* Field definitions for THRESHOLD_INP_BUF_3 */
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_HI_SHIFT        (24)
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_LO_SHIFT        (16)
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_3_INP_BUF_P6_LO_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_HI_SHIFT        (8)
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_HI_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_HI_SHIFT))
+
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_LO_SHIFT        (0)
+#define DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_LO_MASK         ((0x0000007F) << (DCU_THRESHOLD_INP_BUF_3_INP_BUF_P5_LO_SHIFT))
+
+
+
+/* Field definitions for LUMA_COMP */
+#define DCU_LUMA_COMP_Y_RED_SHIFT                (22)
+#define DCU_LUMA_COMP_Y_RED_MASK                 ((0x000003FF) << (DCU_LUMA_COMP_Y_RED_SHIFT))
+
+#define DCU_LUMA_COMP_Y_GREEN_SHIFT              (11)
+#define DCU_LUMA_COMP_Y_GREEN_MASK               ((0x000003FF) << (DCU_LUMA_COMP_Y_GREEN_SHIFT))
+
+#define DCU_LUMA_COMP_Y_BLUE_SHIFT               (0)
+#define DCU_LUMA_COMP_Y_BLUE_MASK                ((0x000003FF) << (DCU_LUMA_COMP_Y_BLUE_SHIFT))
+
+
+
+/* Field definitions for CHROMA_RED */
+#define DCU_CHROMA_RED_CR_RED_SHIFT               (16)
+#define DCU_CHROMA_RED_CR_RED_MASK                ((0x000007FF) << (DCU_CHROMA_RED_CR_RED_SHIFT))
+
+#define DCU_CHROMA_RED_CB_GREEN_SHIFT             (0)
+#define DCU_CHROMA_RED_CB_GREEN_MASK              ((0x00000FFF) << (DCU_CHROMA_RED_CB_GREEN_SHIFT))
+
+
+
+/* Field definitions for CHROMA_GREEN */
+#define DCU_CHROMA_GREEN_CR_GREEN_SHIFT             (16)
+#define DCU_CHROMA_GREEN_CR_GREEN_MASK              ((0x000007FF) << (DCU_CHROMA_GREEN_CR_GREEN_SHIFT))
+
+#define DCU_CHROMA_GREEN_CB_GREEN_SHIFT             (0)
+#define DCU_CHROMA_GREEN_CB_GREEN_MASK              ((0x00000FFF) << (DCU_CHROMA_GREEN_CB_GREEN_SHIFT))
+
+
+
+/* Field definitions for CHROMA_BLUE */
+#define DCU_CHROMA_BLUE_CR_BLUE_SHIFT              (16)
+#define DCU_CHROMA_BLUE_CR_BLUE_MASK               ((0x000007FF) << (DCU_CHROMA_BLUE_CR_BLUE_SHIFT))
+
+#define DCU_CHROMA_BLUE_CB_BLUE_SHIFT              (0)
+#define DCU_CHROMA_BLUE_CB_BLUE_MASK               ((0x00000FFF) << (DCU_CHROMA_BLUE_CB_BLUE_SHIFT))
+
+
+
+/* Field definitions for CRC_POS */
+#define DCU_CRC_POS_CRC_POS_SHIFT              (0)
+#define DCU_CRC_POS_CRC_POS_MASK               ((0xFFFFFFFF) << (DCU_CRC_POS_CRC_POS_SHIFT))
+
+
+
+/* Field definitions for LYR_INTPOL_EN */
+#define DCU_LYR_INTPOL_EN_EN_SHIFT        (0)
+#define DCU_LYR_INTPOL_EN_EN_MASK         ((1) << (DCU_LYR_INTPOL_EN_EN_SHIFT))
+
+
+
+/* Field definitions for LYR_LUMA_COMP */
+#define DCU_LYR_LUMA_COMP_Y_RED_SHIFT        (22)
+#define DCU_LYR_LUMA_COMP_Y_RED_MASK         ((0x000003FF) << (DCU_LYR_LUMA_COMP_Y_RED_SHIFT))
+
+#define DCU_LYR_LUMA_COMP_Y_GREEN_SHIFT        (11)
+#define DCU_LYR_LUMA_COMP_Y_GREEN_MASK         ((0x000003FF) << (DCU_LYR_LUMA_COMP_Y_GREEN_SHIFT))
+
+#define DCU_LYR_LUMA_COMP_Y_BLUE_SHIFT        (0)
+#define DCU_LYR_LUMA_COMP_Y_BLUE_MASK         ((0x000003FF) << (DCU_LYR_LUMA_COMP_Y_BLUE_SHIFT))
+
+
+/* Field definitions for LYR_CHROMA_RED */
+#define DCU_LYR_CHROMA_RED_CR_RED_SHIFT               (16)
+#define DCU_LYR_CHROMA_RED_CR_RED_MASK                ((0x000007FF) << (DCU_LYR_CHROMA_RED_CR_RED_SHIFT))
+
+#define DCU_LYR_CHROMA_RED_CB_RED_SHIFT               (0)
+#define DCU_LYR_CHROMA_RED_CB_RED_MASK                ((0x00000FFF) << (DCU_LYR_CHROMA_RED_CB_RED_SHIFT))
+
+
+
+/* Field definitions for LYR_CHROMA_GREEN */
+#define DCU_LYR_CHROMA_GREEN_CR_GREEN_SHIFT               (16)
+#define DCU_LYR_CHROMA_GREEN_CR_GREEN_MASK                ((0x000007FF) << (DCU_LYR_CHROMA_GREEN_CR_GREEN_SHIFT))
+
+#define DCU_LYR_CHROMA_GREEN_CB_GREEN_SHIFT               (0)
+#define DCU_LYR_CHROMA_GREEN_CB_GREEN_MASK                ((0x00000FFF) << (DCU_LYR_CHROMA_GREEN_CB_GREEN_SHIFT))
+
+
+/* Field definitions for LYR_CHROMA_BLUE */
+#define DCU_LYR_CHROMA_BLUE_CR_BLUE_SHIFT               (16)
+#define DCU_LYR_CHROMA_BLUE_CR_BLUE_MASK                ((0x000007FF) << (DCU_LYR_CHROMA_BLUE_CR_BLUE_SHIFT))
+
+#define DCU_LYR_CHROMA_BLUE_CB_BLUE_SHIFT               (0)
+#define DCU_LYR_CHROMA_BLUE_CB_BLUE_MASK                ((0x00000FFF) << (DCU_LYR_CHROMA_BLUE_CB_BLUE_SHIFT))
+
+/* Field definitions for COMP_IMSIZE */
+#define DCU_COMP_IMSIZE_SIZE_SHIFT          (0)
+#define DCU_COMP_IMSIZE_SIZE_MASK           ((0x003FFFFF) << (DCU_COMP_IMSIZE_SIZE_SHIFT))
+
+
+
+/* Field definitions for UPDATE_MODE */
+#define DCU_UPDATE_MODE_MODE_SHIFT          (31)
+#define DCU_UPDATE_MODE_MODE_MASK           ((1) << (DCU_UPDATE_MODE_MODE_SHIFT))
+
+#define DCU_UPDATE_MODE_READREG_SHIFT     (30)
+#define DCU_UPDATE_MODE_READREG_MASK      ((1) << (DCU_UPDATE_MODE_READREG_SHIFT))
+
+
+
+/* Field definitions for UNDERRUN */
+#define DCU_UNDERRUN_LINE_SHIFT          (16)
+#define DCU_UNDERRUN_LINE_MASK           ((0x000007FF) << (DCU_UNDERRUN_LINE_SHIFT))
+
+#define DCU_UNDERRUN_PIXEL_SHIFT          (0)
+#define DCU_UNDERRUN_PIXEL_MASK           ((0x000007FF) << (DCU_UNDERRUN_PIXEL_SHIFT))
+
+
+/* Field definitions for CTRLDESCLn_1 */
+#define DCU_CTRLDESCLn_1_HEIGHT_SHIFT                 (16)
+#define DCU_CTRLDESCLn_1_HEIGHT_MASK                  ((0x000007FF) << (DCU_CTRLDESCLn_1_HEIGHT_SHIFT))
+
+#define DCU_CTRLDESCLn_1_WIDTH_SHIFT                 (0)
+#define DCU_CTRLDESCLn_1_WIDTH_MASK                  ((0x000007FF) << (DCU_CTRLDESCLn_1_WIDTH_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_2 */
+#define DCU_CTRLDESCLn_2_POSY_SHIFT                 (16)
+#define DCU_CTRLDESCLn_2_POSY_MASK                  ((0x000007FF) << (DCU_CTRLDESCLn_2_POSY_SHIFT))
+
+#define DCU_CTRLDESCLn_2_POSX_SHIFT                 (0)
+#define DCU_CTRLDESCLn_2_POSX_MASK                  ((0x000007FF) << (DCU_CTRLDESCLn_2_POSX_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_3 */
+#define DCU_CTRLDESCLn_3_ADDR_SHIFT                 (0)
+#define DCU_CTRLDESCLn_3_ADDR_MASK                  ((0xFFFFFFFF) << (DCU_CTRLDESCLn_3_ADDR_SHIFT))
+
+
+/* Field definitions for CTRLDESCLn_4 */
+#define DCU_CTRLDESCLn_4_EN_SHIFT                   (31)
+#define DCU_CTRLDESCLn_4_EN_MASK                    ((1) << (DCU_CTRLDESCLn_4_EN_SHIFT))
+
+#define DCU_CTRLDESCLn_4_TILE_EN_SHIFT              (30)
+#define DCU_CTRLDESCLn_4_TILE_EN_MASK               ((1) << (DCU_CTRLDESCLn_4_TILE_EN_SHIFT))
+
+#define DCU_CTRLDESCLn_4_DATA_SEL_SHIFT             (29)
+#define DCU_CTRLDESCLn_4_DATA_SEL_MASK              ((1) << (DCU_CTRLDESCLn_4_DATA_SEL_SHIFT))
+
+#define DCU_CTRLDESCLn_4_SAFETY_EN_SHIFT            (28)
+#define DCU_CTRLDESCLn_4_SAFETY_EN_MASK             ((1) << (DCU_CTRLDESCLn_4_SAFETY_EN_SHIFT))
+
+#define DCU_CTRLDESCLn_4_TRANS_SHIFT                (20)
+#define DCU_CTRLDESCLn_4_TRANS_MASK                 ((0x000000FF) << (DCU_CTRLDESCLn_4_TRANS_SHIFT))
+
+#define DCU_CTRLDESCLn_4_BPP_SHIFT                  (16)
+#define DCU_CTRLDESCLn_4_BPP_MASK                   ((0x0000000F) << (DCU_CTRLDESCLn_4_BPP_SHIFT))
+
+#define DCU_CTRLDESCLn_4_EN_RLE_SHIFT                  (15)
+#define DCU_CTRLDESCLn_4_EN_RLE_MASK                   ((1) << (DCU_CTRLDESCLn_4_EN_RLE_SHIFT))
+
+#define DCU_CTRLDESCLn_4_LUOFFS_SHIFT               (4)
+#define DCU_CTRLDESCLn_4_LUOFFS_MASK                ((0x000007FF) << (DCU_CTRLDESCLn_4_LUOFFS_SHIFT))
+
+#define DCU_CTRLDESCLn_4_BB_SHIFT                   (2)
+#define DCU_CTRLDESCLn_4_BB_MASK                    ((1) << (DCU_CTRLDESCLn_4_BB_SHIFT))
+
+#define DCU_CTRLDESCLn_4_AB_SHIFT                   (0)
+#define DCU_CTRLDESCLn_4_AB_MASK                    ((0x00000003) << (DCU_CTRLDESCLn_4_AB_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_5 */
+#define DCU_CTRLDESCLn_5_CKMAX_R_SHIFT              (16)
+#define DCU_CTRLDESCLn_5_CKMAX_R_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_5_CKMAX_R_SHIFT))
+
+#define DCU_CTRLDESCLn_5_CKMAX_G_SHIFT              (8)
+#define DCU_CTRLDESCLn_5_CKMAX_G_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_5_CKMAX_G_SHIFT))
+
+#define DCU_CTRLDESCLn_5_CKMAX_B_SHIFT              (0)
+#define DCU_CTRLDESCLn_5_CKMAX_B_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_5_CKMAX_B_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_6 */
+#define DCU_CTRLDESCLn_6_CKMIN_R_SHIFT              (16)
+#define DCU_CTRLDESCLn_6_CKMIN_R_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_6_CKMIN_R_SHIFT))
+
+#define DCU_CTRLDESCLn_6_CKMIN_G_SHIFT              (8)
+#define DCU_CTRLDESCLn_6_CKMIN_G_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_6_CKMIN_G_SHIFT))
+
+#define DCU_CTRLDESCLn_6_CKMIN_B_SHIFT              (0)
+#define DCU_CTRLDESCLn_6_CKMIN_B_MASK               ((0x000000FF) << (DCU_CTRLDESCLn_6_CKMIN_B_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_7 */
+#define DCU_CTRLDESCLn_7_TILE_VER_SIZE_SHIFT        (16)
+#define DCU_CTRLDESCLn_7_TILE_VER_SIZE_MASK         ((0x000007FF) << (DCU_CTRLDESCLn_7_TILE_VER_SIZE_SHIFT))
+
+#define DCU_CTRLDESCLn_7_TILE_HOR_SIZE_SHIFT        (0)
+#define DCU_CTRLDESCLn_7_TILE_HOR_SIZE_MASK         ((0x0000007F) << (DCU_CTRLDESCLn_7_TILE_HOR_SIZE_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_8 */
+#define DCU_CTRLDESCLn_8_COLOR_SHIFT            (0)
+#define DCU_CTRLDESCLn_8_COLOR_MASK             ((0x00FFFFFF) << (DCU_CTRLDESCLn_8_COLOR_SHIFT))
+
+
+
+/* Field definitions for CTRLDESCLn_9 */
+#define DCU_CTRLDESCLn_9_COLOR_SHIFT            (0)
+#define DCU_CTRLDESCLn_9_COLOR_MASK             ((0x00FFFFFF) << (DCU_CTRLDESCLn_9_COLOR_SHIFT))
+
+
+/*** End of bit definitions ***/
+
+/*** define base address ***/
+#define DCU0_BASE		0x40058000
+#define DCU1_BASE		0x400D8000
+
+/* TODO: Cleanup and move to TCON header file/driver */
+#define TCON0_BASE		0x4003D000
+#define TCON_CTRL1_OFFSET    (0x00000000/4)
+#define TCON_CTRL1_TCON_BYPASS_SHIFT         (29)
+#define TCON_CTRL1_TCON_BYPASS_MASK          ((1) << (TCON_CTRL1_TCON_BYPASS_SHIFT))
+
+
+#endif

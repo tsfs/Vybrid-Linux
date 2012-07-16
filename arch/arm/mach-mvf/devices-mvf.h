@@ -21,6 +21,9 @@
 #include <mach/mvf.h>
 #include <mach/devices-common.h>
 
+extern const struct mvf_dcuv4_data vf600_dcuv4_data[] __initconst;
+#define vf600_add_dcuv4(id, pdata)	mvf_add_dcuv4(id, &vf600_dcuv4_data[id], pdata)
+
 extern const struct imx_imx_uart_1irq_data mvf_imx_uart_data[] __initconst;
 #define mvf_add_imx_uart(id, pdata)	\
 	imx_add_imx_uart_1irq(&mvf_imx_uart_data[id], pdata)

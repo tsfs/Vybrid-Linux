@@ -352,6 +352,23 @@ struct platform_device *__init imx_add_ipuv3_fb(
 		const int id,
 		const struct ipuv3_fb_platform_data *pdata);
 
+#include <mach/dcu-v4.h>
+struct mvf_dcuv4_data {
+	resource_size_t iobase;
+	resource_size_t iosize;
+	resource_size_t irq;
+	void (*pg) (int, int);
+	void (*blank) (int, int);
+};
+struct platform_device *__init mvf_add_dcuv4(
+		const int id,
+		const struct mvf_dcuv4_data *data,
+		struct mvf_dcuv4_platform_data *pdata);
+
+struct platform_device *__init mvf_add_dcuv4_fb(
+		const int id,
+		const struct dcuv4_fb_platform_data *pdata);
+
 #include <mach/mxc_vpu.h>
 struct imx_vpu_data {
 	resource_size_t iobase;

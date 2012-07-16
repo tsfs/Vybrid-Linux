@@ -128,4 +128,6 @@ source "drivers/clocksource/Kconfig"
 
 source "drivers/mxc/Kconfig"
 
+source "drivers/mvf/Kconfig"
+
 endmenu

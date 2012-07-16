@@ -169,3 +169,7 @@ config IMX_HAVE_PLATFORM_IMX_MIPI_DSI
 
 config IMX_HAVE_PLATFORM_IMX_MIPI_CSI2
 	bool
+
+config MVF_HAVE_PLATFORM_DCUV4
+	bool
+	default y if ARCH_MVF

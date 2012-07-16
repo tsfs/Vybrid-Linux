@@ -345,6 +345,14 @@ static struct platform_device lpt_device = {
        .resource = lpt_resources,
 };
 
+static struct mvf_dcuv4_platform_data dcuv4_data[] = {
+	{
+	.rev		= 1,
+	}, {
+	.rev		= 1,
+	},
+};
+
 static void twr_vf600_suspend_enter(void)
 {
 	/* suspend preparation */
@@ -387,6 +395,8 @@ static void __init twr_vf600_init(void)
 	twr_vf600_init_uart();
 	vf6xx_add_imx_snvs_rtc();
 	mvf_init_fec(fec_data);
+
+	vf600_add_dcuv4(0, &dcuv4_data[0]);	
 
 	platform_device_register(&edma_device);
 	platform_device_register(&pit_device);

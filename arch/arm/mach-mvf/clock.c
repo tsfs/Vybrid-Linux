@@ -2559,10 +2559,10 @@ static unsigned long _clk_dcu_get_rate(struct clk *clk)
 
 	reg = __raw_readl(MXC_CCM_CSCDR3);
 	if (clk == &dcu0_clk_root)
-		div = ((reg & ~MXC_CCM_CSCDR3_DCU0_DIV_MASK) >>
+		div = ((reg & MXC_CCM_CSCDR3_DCU0_DIV_MASK) >>
 			MXC_CCM_CSCDR3_DCU0_DIV_OFFSET) + 1;
 	else
-		div = ((reg & ~MXC_CCM_CSCDR3_DCU1_DIV_MASK) >>
+		div = ((reg & MXC_CCM_CSCDR3_DCU1_DIV_MASK) >>
 			MXC_CCM_CSCDR3_DCU1_DIV_OFFSET) + 1;
 
 	return clk_get_rate(clk->parent) / div;
@@ -2617,7 +2617,7 @@ static int _clk_dcu_set_parent(struct clk *clk, struct clk *parent)
 
 static struct clk dcu0_clk_root = {
 	__INIT_CLK_DEBUG(dcu0_clk_root)
-	.parent = &pll1_pfd2, //FIXME
+	.parent = &pll3_480_usb1_main_clk,
 	.enable_shift = MXC_CCM_CSCDR3_DCU0_EN_OFFSET,
 	.enable = _clk_dcu_enable,
 	.disable = _clk_dcu_disable,

@@ -1,0 +1,19 @@
+#drivers/video/mvf/Kconfig
+
+if ARCH_MVF
+
+menu "MVF support drivers"
+
+config MVF_DCU
+	bool "Display Controller Unit Driver"
+	depends on ARCH_VF6XX
+	select MVF_DCU_V4 if ARCH_VF6XX
+	help
+	  If you plan to use the Display Controller unit, say
+	  Y here. DCU is needed by Framebuffer and V4L2 drivers.
+
+source "drivers/mvf/dcu4/Kconfig"
+
+endmenu
+
+endif
