@@ -128,7 +128,7 @@ typedef enum
 typedef enum
 {
 	ALPHA_BLEND_DISABLED = 0,
-	ALPHA_BLEND_ENABLED
+	ALPHA_BLEND_ENABLED = 2
 }alpha_aa_config;
 
 /*!

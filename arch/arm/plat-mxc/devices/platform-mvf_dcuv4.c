@@ -51,7 +51,6 @@ void vf600_dcuv4_blank(int id, int enable)
 	{
 		if(id == 0)
 		{
-			printk("Blanking \n");
 			//disable pclk
 			mxc_iomux_vmvf_setup_pad(VF6XX_PAD_PAD_110__RGPIOC_GPIO110);
 			//disable backlight
@@ -63,7 +62,6 @@ void vf600_dcuv4_blank(int id, int enable)
 	{
 		if(id == 0)
 		{
-			printk("UnBlanking \n");
 			//enable pclk
 			mxc_iomux_vmvf_setup_pad(VF6XX_PAD_PAD_110__TCON0_DATA_OUT18);
 			//enable backlight
