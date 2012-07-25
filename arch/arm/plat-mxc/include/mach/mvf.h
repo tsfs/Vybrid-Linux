@@ -393,8 +393,8 @@
 #define MXC_INT_GPIOB			140
 #define MXC_INT_GPIOC			141
 #define MXC_INT_GPIOD			142
-#define MXC_INT_GPIOE			153
-#define MXC_INT_END			153
+#define MXC_INT_GPIOE			143
+#define MXC_INT_END			143
 
 #define MVF_INT_UART0			MXC_INT_UART0
 #define MVF_INT_UART1			MXC_INT_UART1
