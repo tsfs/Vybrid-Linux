@@ -126,11 +126,11 @@ struct platform_device *__init mvf_add_dcuv4_fb(
 					pdata->res_size[1] - 1;
 		}
 
-		return imx_add_platform_device_dmamask("mxc_sdc_fb",
+		return imx_add_platform_device_dmamask("mvf_dcu4_fb",
 				id, res, ARRAY_SIZE(res), pdata,
 				sizeof(*pdata), DMA_BIT_MASK(32));
 	} else
-		return imx_add_platform_device_dmamask("mxc_sdc_fb", id,
+		return imx_add_platform_device_dmamask("mvf_dcu4_fb", id,
 				NULL, 0, pdata, sizeof(*pdata),
 				DMA_BIT_MASK(32));
 }

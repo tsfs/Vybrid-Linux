@@ -353,6 +353,20 @@ static struct mvf_dcuv4_platform_data dcuv4_data[] = {
 	},
 };
 
+static struct dcuv4_fb_platform_data mvf_fb_data[] = {
+	{
+		.disp_dev = "lcd",
+		.interface_pix_fmt = V4L2_PIX_FMT_RGB32,
+		.mode_str = "NEC-WQVGA",
+		.default_bpp = 32,
+	},
+};
+
+static struct fsl_mvf_lcd_platform_data lcdif_data = {
+	.dcu_id = 0,
+	.default_ifmt = V4L2_PIX_FMT_RGB32,
+};
+
 static void twr_vf600_suspend_enter(void)
 {
 	/* suspend preparation */
@@ -396,7 +410,12 @@ static void __init twr_vf600_init(void)
 	vf6xx_add_imx_snvs_rtc();
 	mvf_init_fec(fec_data);
 
+	printk("TWR_VF600: Adding dcuv4 \n");
 	vf600_add_dcuv4(0, &dcuv4_data[0]);	
+	printk("TWR_VF600: Adding dcuv4-fb\n");
+	mvf_add_dcuv4_fb(0, &mvf_fb_data[0]);
+	printk("TWR_VF600: Adding lcdif\n");
+	mvf_add_lcdif(&lcdif_data);
 
 	platform_device_register(&edma_device);
 	platform_device_register(&pit_device);

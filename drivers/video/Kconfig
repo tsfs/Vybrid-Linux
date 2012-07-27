@@ -2400,6 +2400,9 @@ config FB_MXC_HDMI
 	help
 	  Driver for the on-chip MXC HDMI controller.
 
+if ARCH_MVF
+source "drivers/video/mvf/Kconfig"
+endif
 
 if VT
 	source "drivers/video/console/Kconfig"

@@ -303,6 +303,16 @@ struct fsl_mxc_tvin_platform_data {
 	bool cvbs;
 };
 
+struct fsl_mvf_lcd_platform_data {
+	void (*reset) (void);
+	int (*get_pins) (void);
+	void (*put_pins) (void);
+	void (*enable_pins) (void);
+	void (*disable_pins) (void);
+	int default_ifmt;
+	int dcu_id;
+};
+
 struct mpc8xx_pcmcia_ops {
 	void(*hw_ctrl)(int slot, int enable);
 	int(*voltage_set)(int slot, int vcc, int vpp);

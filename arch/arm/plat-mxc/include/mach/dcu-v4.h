@@ -205,6 +205,10 @@ int32_t dcu_init_panel(struct dcu_soc *dcu, uint32_t pixel_clk,
 
 void dcu_uninit_panel(struct dcu_soc *dcu);
 
+void dcu_enable(struct dcu_soc *dcu);
+
+void dcu_disable(struct dcu_soc *dcu);
+
 /* DCU global feature support */
 void dcu_set_bgnd_color(struct dcu_soc *dcu, dcu_color_t color);
 

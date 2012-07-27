@@ -1,0 +1,20 @@
+config FB_MVF
+	tristate "MVF Framebuffer support"
+	depends on FB && (MVF_DCU || ARCH_VF6XX)
+	default y
+	help
+	  This is a framebuffer device for the MVF LCD Controller.
+	  See <http://www.linux-fbdev.org/> for information on framebuffer
+	  devices.
+
+	  If you plan to use the LCD display with your MVF system, say
+	  Y here.
+
+config FB_MVF_NUM_FBS
+	int "Number of Framebuffers"
+	range 1 32
+	default 1
+	depends on FB_MVF
+	help
+	  Select the number of framebuffers corresponding to layers
+	  desired.  

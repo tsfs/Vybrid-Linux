@@ -32,6 +32,10 @@ extern const struct imx_snvs_rtc_data vf6xx_imx_snvs_rtc_data __initconst;
 #define vf6xx_add_imx_snvs_rtc()	\
 	imx_add_snvs_rtc(&vf6xx_imx_snvs_rtc_data)
 
+#define mvf_add_lcdif(pdata)	\
+	platform_device_register_resndata(NULL, "mvf_lcdif",\
+			0, NULL, 0, pdata, sizeof(*pdata));
+
 #if 0
 extern const struct imx_dma_data vf6xx_dma_data __initconst;
 #define vf6xx_add_dma()	imx_add_dma(&vf6xx_dma_data);

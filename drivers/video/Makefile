@@ -50,6 +50,7 @@ obj-$(CONFIG_FB_GEODE)		  += geode/
 obj-$(CONFIG_FB_MBX)          += mbx/
 obj-$(CONFIG_FB_MXC_HDMI)         += mxc_hdmi.o
 obj-$(CONFIG_FB_MXC)              += mxc/
+obj-$(CONFIG_FB_MVF)		  += mvf/
 obj-$(CONFIG_FB_NEOMAGIC)         += neofb.o
 obj-$(CONFIG_FB_3DFX)             += tdfxfb.o
 obj-$(CONFIG_FB_CONTROL)          += controlfb.o
