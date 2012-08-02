@@ -62,6 +62,9 @@ ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/include/asm/kvm_para.h \
 header-y += kvm_para.h
 endif
 
+## MVF specific files
+header-y += mvffb.h
+
 header-y += acct.h
 header-y += adb.h
 header-y += adfs_fs.h

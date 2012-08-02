@@ -48,7 +48,7 @@ static int lcdif_init(struct mvf_dispdrv_handle *disp,
 	struct fb_videomode *modedb = lcdif_modedb;
 	int modedb_sz = lcdif_modedb_sz;
 
-	printk("lcd-if: init called with dcu = %d!!\n", plat_data->dcu_id);
+	printk("lcd-if: init called with dcu = %d\n", plat_data->dcu_id);
 	printk("The pixel clock in modedb, picosecs = %ld, HZ = %ld\n", KHZ2PICOS(10870), ((PICOS2KHZ(91996)) * 1000UL));
 
 	/* use platform defined dcu */
@@ -90,7 +90,7 @@ static int mvf_lcdif_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct mvf_lcdif_data *lcdif;
-	printk("lcdif: probe called!!!\n");
+	printk("lcdif: probe called.\n");
 
 	lcdif = kzalloc(sizeof(struct mvf_lcdif_data), GFP_KERNEL);
 	if (!lcdif) {
