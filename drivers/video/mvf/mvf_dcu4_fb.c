@@ -62,8 +62,11 @@ struct mvffb_info {
 	int dcu_id;
 	u32 dcu_pix_fmt;
 	bool layer;
-	uint32_t dcu_layer_transfer_finish;
+	uint32_t vsync_irq;
 	struct fb_info *ovfbi[32];
+
+	struct completion vsync_complete;
+
 	void *dcu;
 	struct mvf_dispdrv_handle *dispdrv;
 
@@ -136,6 +139,7 @@ static struct fb_info *found_registered_fb(int layer_id, int dcu_id)
 	return fbi;
 }
 
+static irqreturn_t mvffb_vsync_irq_handler(int irq, void *dev_id);
 static int mvffb_blank(int blank, struct fb_info *info);
 static int mvffb_map_video_memory(struct fb_info *fbi);
 static int mvffb_unmap_video_memory(struct fb_info *fbi);
@@ -155,9 +159,9 @@ static int mvffb_set_fix(struct fb_info *info)
 	fix->type = FB_TYPE_PACKED_PIXELS;
 	fix->accel = FB_ACCEL_NONE;
 	fix->visual = FB_VISUAL_TRUECOLOR;
-	fix->xpanstep = 0;
-	fix->ywrapstep = 0;
-	fix->ypanstep = 0;
+	fix->xpanstep = 1;
+	fix->ywrapstep = 1;
+	fix->ypanstep = 1;
 
 	return 0;
 }
@@ -185,6 +189,9 @@ static int mvffb_set_par(struct fb_info *fbi)
 			return -EINVAL;
 		}
 	}
+
+	dcu_clear_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
+	dcu_disable_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
 
 	if(dcu_is_layer_enabled(mvf_fbi->dcu, fbi->node))
 	{
@@ -296,7 +303,7 @@ static int mvffb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	u32 vtotal;
 	u32 htotal;
 
-/*  DCU does not support rotation, TODO: add software implementation?
+/*  DCU does not support rotation, TODO: add software implementation.
 	if (var->rotate > IPU_ROTATE_VERT_FLIP)
 		var->rotate = IPU_ROTATE_NONE;
 */
@@ -560,6 +567,22 @@ static int mvffb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 
 			break;
 		}
+	case MVFFB_WAIT_FOR_VSYNC:
+	{
+		init_completion(&mvf_fbi->vsync_complete);
+		dcu_clear_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
+		dcu_enable_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
+		retval = wait_for_completion_interruptible_timeout(&mvf_fbi->vsync_complete, 1 * HZ);
+		if (retval == 0) {
+			dev_err(fbi->device,
+				"MVFFB_WAIT_FOR_VSYNC: timeout %d\n",
+				retval);
+			retval = -ETIME;
+		} else if (retval > 0) {
+			retval = 0;
+		}
+		break;
+	}
 	default:
 		retval = -EINVAL;
 	}
@@ -618,7 +641,7 @@ mvffb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	u_int y_bottom;
 	unsigned int fr_xoff, fr_yoff, fr_w, fr_h;
 	unsigned long base;
-	int fb_stride;
+	int fb_stride, retval;
 
 	if (info->var.yoffset == var->yoffset)
 	{
@@ -629,7 +652,6 @@ mvffb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	// no pan display during fb blank
 	if (mvf_fbi->cur_blank != FB_BLANK_UNBLANK)
 	{
-		printk("Framebuffer: No Pan during FB Blank %d\n", mvf_fbi->cur_blank);
 		return -EINVAL;
 	}
 
@@ -637,7 +659,6 @@ mvffb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	if (y_bottom > info->var.yres_virtual)
 	{
-		printk("Framebuffer: y_bottom is greater than yres_virtual\n");
 		return -EINVAL;
 	}
 
@@ -660,6 +681,14 @@ mvffb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		fr_h = info->var.yres_virtual;
 	}
 	base += fr_yoff * fb_stride + fr_xoff;
+
+	init_completion(&mvf_fbi->vsync_complete);
+	dcu_clear_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
+	dcu_enable_irq(mvf_fbi->dcu, mvf_fbi->vsync_irq);
+	retval = wait_for_completion_interruptible_timeout(&mvf_fbi->vsync_complete, 1 * HZ);
+	if (retval == 0) {
+		dev_err(info->device, "Error - VSYNC timeout error %d", retval);
+	}
 
 	dev_dbg(info->device, "Updating %s buf address=0x%08lX\n",
 		info->fix.id, base);
@@ -748,6 +777,16 @@ static struct fb_ops mvffb_ops = {
 	//.fb_imageblit = cfb_imageblit,
 	.fb_blank = mvffb_blank,
 };
+
+static irqreturn_t mvffb_vsync_irq_handler(int irq, void *dev_id)
+{
+	struct fb_info *fbi = dev_id;
+	struct mvffb_info *mvf_fbi = fbi->par;
+
+	complete(&mvf_fbi->vsync_complete);
+	dcu_disable_irq(mvf_fbi->dcu, irq);
+	return IRQ_HANDLED;
+}
 
 /*
  * Suspends the framebuffer and blanks the screen. Power management support
@@ -972,6 +1011,7 @@ static int mvffb_option_setup(struct platform_device *pdev)
 				continue;
 			}
 
+			//TODO:Support Other formats.
 			/*if (!strncmp(opt+6, "BGR24", 5)) {
 				pdata->interface_pix_fmt = IPU_PIX_FMT_BGR24;
 				continue;
@@ -1071,20 +1111,28 @@ static int mvffb_register(struct fb_info *fbi)
 	fbi->flags &= ~FBINFO_MISC_USEREVENT;
 	console_unlock();
 
+	printk("Framebuffer: Is next blank unblank.\n");
 	if (mvffbi->next_blank == FB_BLANK_UNBLANK) {
 		console_lock();
 		fb_blank(fbi, FB_BLANK_UNBLANK);
 		console_unlock();
 	}
+	printk("Framebuffer: registering framebuffer.\n");
 
 	ret = register_framebuffer(fbi);
 
 	printk("Framebuffer: mvffb registered node %d\n", fbi->node);
+
 	return ret;
 }
 
 static void mvffb_unregister(struct fb_info *fbi)
 {
+	struct mvffb_info *mvffbi = (struct mvffb_info *)fbi->par;
+
+	if (mvffbi->vsync_irq)
+		dcu_free_irq(mvffbi->dcu, mvffbi->vsync_irq, fbi);
+
 	unregister_framebuffer(fbi);
 }
 
@@ -1220,6 +1268,16 @@ static int mvffb_probe(struct platform_device *pdev)
 
 	printk("Framebuffer: got dcu soc handle.\n");
 
+	mvffbi->vsync_irq = DCU_IRQ_DMA_TRANS_FINISH;
+	if (dcu_request_irq(mvffbi->dcu, mvffbi->vsync_irq, mvffb_vsync_irq_handler, 0, MVFFB_NAME, fbi) != 0) {
+		dev_err(fbi->device, "Error registering DMA TRANS FINISH irq handler.\n");
+		ret = -EBUSY;
+		goto irq_request_failed;
+	}
+	dcu_disable_irq(mvffbi->dcu, mvffbi->vsync_irq);
+
+	printk("Framebuffer: Requested the DMA TRANS FINISH IRQ\n");
+
 	/* first user uses DP(display processor) with alpha feature */
 	if (!g_dp_in_use[mvffbi->dcu_id]) {
 		mvffbi->cur_blank = mvffbi->next_blank = FB_BLANK_UNBLANK;
@@ -1269,6 +1327,8 @@ static int mvffb_probe(struct platform_device *pdev)
 
 	return 0;
 
+irq_request_failed:
+	dcu_free_irq(mvffbi->dcu, mvffbi->vsync_irq, fbi);
 mvffb_setupoverlay_failed:
 mvffb_register_failed:
 get_dcu_failed:
