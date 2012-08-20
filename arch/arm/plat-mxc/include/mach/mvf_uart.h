@@ -53,10 +53,11 @@ struct mvfuart_platform_data {
 	unsigned int dma_req_tx;
 };
 
-#define MVFUART_HAVE_RTSCTS (1<<0)
-#define MVFUART_IRDA        (1<<1)
-#define MVFUART_USE_DCEDTE  (1<<2)
-#define MVFUART_SDMA        (1<<3)
+#define MVFUART_HAVE_RTSCTS	(1<<0)
+#define MVFUART_IRDA		(1<<1)
+#define MVFUART_USE_DCEDTE	(1<<2)
+#define MVFUART_SDMA		(1<<3)
+#define MVFUART_MSB_FIRST	(1<<4)
 
 #define MVF_UART_BDH     0x00   /* UART Bard Rate Registers:High 	   */
 #define MVF_UART_BDL     0x01   /* UART Baud Rate Registers:Low  	   */
@@ -157,13 +158,21 @@ struct mvfuart_platform_data {
 #define UART_S2_LBKDE   (1<<1)
 #define UART_S2_RAF     (1<<0)
 
+#define UART_C5_TDMAS   (1<<7)
+#define UART_C5_RDMAS   (1<<5)
+
+#define UART_MODEM_RXRTSE	(1<<3)
+#define UART_MODEM_TXRTSPOL	(1<<2)
+#define UART_MODEM_TXRTSE	(1<<1)
+#define UART_MODEM_TXCTSE	(1<<0)
+
+#define UART_PFIFO_TXFE   (1<<7)
+#define UART_PFOFO_RXFE   (1<<3)
+
 #define UART_SFIFO_TXEMPT (1<<7)
 #define UART_SFIFO_RXEMPT (1<<6)
 #define UART_SFIFO_RXOF   (1<<2)
 #define UART_SFIFO_TXOF   (1<<1)
 #define UART_SFIFO_RXUF   (1<<0)
-
-#define UART_PFIFO_TXFE   (1<<7)
-#define UART_PFOFO_RXFE   (1<<3)
 #endif
 #endif
