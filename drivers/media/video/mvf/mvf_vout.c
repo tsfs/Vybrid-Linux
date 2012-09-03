@@ -340,6 +340,7 @@ static bool is_pp_bypass(struct mvf_vout_output *vout)
 	return false;
 }
 
+//OK
 static void setup_buf_timer(struct mvf_vout_output *vout,
 			struct videobuf_buffer *vb)
 {
@@ -557,223 +558,6 @@ static void mvf_vout_timer_handler(unsigned long arg)
 	spin_unlock_irqrestore(q->irqlock, flags);
 }
 
-/* Video buffer call backs */
-
-/*
- * Buffer setup function is called by videobuf layer when REQBUF ioctl is
- * called. This is used to setup buffers and return size and count of
- * buffers allocated. After the call to this buffer, videobuf layer will
- * setup buffer queue depending on the size and count of buffers
- */
-static int mvf_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
-			  unsigned int *size)
-{
-	struct mvf_vout_output *vout = q->priv_data;
-
-	if (!vout)
-		return -EINVAL;
-
-	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != q->type)
-		return -EINVAL;
-
-	*size = PAGE_ALIGN(vout->task.input.width * vout->task.input.height *
-			fmt_to_bpp(vout->task.input.format)/8);
-
-	return 0;
-}
-
-/*
- * This function will be called when VIDIOC_QBUF ioctl is called.
- * It prepare buffers before give out for the display. This function
- * converts user space virtual address into physical address if userptr memory
- * exchange mechanism is used.
- */
-static int mvf_vout_buffer_prepare(struct videobuf_queue *q,
-			    struct videobuf_buffer *vb,
-			    enum v4l2_field field)
-{
-	vb->state = VIDEOBUF_PREPARED;
-	return 0;
-}
-
-/*
- * Buffer queue funtion will be called from the videobuf layer when _QBUF
- * ioctl is called. It is used to enqueue buffer, which is ready to be
- * displayed.
- * This function is protected by q->irqlock.
- */
-static void mvf_vout_buffer_queue(struct videobuf_queue *q,
-			  struct videobuf_buffer *vb)
-{
-	struct mvf_vout_output *vout = q->priv_data;
-
-	list_add_tail(&vb->queue, &vout->queue_list);
-	vb->state = VIDEOBUF_QUEUED;
-
-	if (vout->timer_stop) {
-		if (deinterlace_3_field(vout) &&
-			list_empty(&vout->active_list)) {
-			vb = list_first_entry(&vout->queue_list,
-					struct videobuf_buffer, queue);
-			list_del(&vb->queue);
-			list_add_tail(&vb->queue, &vout->active_list);
-		} else {
-			setup_buf_timer(vout, vb);
-			vout->timer_stop = false;
-		}
-	}
-}
-
-/*
- * Buffer release function is called from videobuf layer to release buffer
- * which are already allocated
- */
-static void mvf_vout_buffer_release(struct videobuf_queue *q,
-			    struct videobuf_buffer *vb)
-{
-	vb->state = VIDEOBUF_NEEDS_INIT;
-}
-
-//OK
-static int mvf_vout_mmap(struct file *file, struct vm_area_struct *vma)
-{
-	int ret;
-	struct mvf_vout_output *vout = file->private_data;
-
-	if (!vout)
-		return -ENODEV;
-
-	ret = videobuf_mmap_mapper(&vout->vbq, vma);
-	if (ret < 0)
-		v4l2_err(vout->vfd->v4l2_dev,
-				"offset invalid [offset=0x%lx]\n",
-				(vma->vm_pgoff << PAGE_SHIFT));
-
-	return ret;
-}
-
-static int mvf_vout_release(struct file *file)
-{
-	unsigned int ret = 0;
-	struct videobuf_queue *q;
-	struct mvf_vout_output *vout = file->private_data;
-
-	if (!vout)
-		return 0;
-
-	if (--vout->open_cnt == 0) {
-		q = &vout->vbq;
-		if (q->streaming)
-			mvf_vidioc_streamoff(file, vout, vout->type);
-		else {
-			release_disp_output(vout);
-			videobuf_queue_cancel(q);
-		}
-		destroy_workqueue(vout->v4l_wq);
-		ret = videobuf_mmap_free(q);
-	}
-
-	return ret;
-}
-
-//OK
-static int mvf_vout_open(struct file *file)
-{
-	struct mvf_vout_output *vout = NULL;
-	int ret = 0;
-
-	vout = video_drvdata(file);
-
-	if (vout == NULL)
-		return -ENODEV;
-
-	if (vout->open_cnt++ == 0) {
-		vout->ctrl_rotate = 0;
-		vout->ctrl_vflip = 0;
-		vout->ctrl_hflip = 0;
-		update_display_setting();
-		ret = update_setting_from_fbi(vout, vout->fbi);
-		if (ret < 0)
-			goto err;
-
-		vout->v4l_wq = create_singlethread_workqueue("v4l2q");
-		if (!vout->v4l_wq) {
-			v4l2_err(vout->vfd->v4l2_dev,
-					"Could not create work queue\n");
-			ret = -ENOMEM;
-			goto err;
-		}
-
-		INIT_WORK(&vout->disp_work, disp_work_func);
-
-		INIT_LIST_HEAD(&vout->queue_list);
-		INIT_LIST_HEAD(&vout->active_list);
-
-		vout->fmt_init = false;
-		vout->frame_count = 0;
-
-		vout->win_pos.x = 0;
-		vout->win_pos.y = 0;
-	}
-
-	file->private_data = vout;
-
-err:
-	return ret;
-}
-
-/*
- * V4L2 ioctls
- */
-// OK
-static int mvf_vidioc_querycap(struct file *file, void *fh,
-		struct v4l2_capability *cap)
-{
-	struct mvf_vout_output *vout = fh;
-
-	strlcpy(cap->driver, VOUT_NAME, sizeof(cap->driver));
-	strlcpy(cap->card, vout->vfd->name, sizeof(cap->card));
-	cap->bus_info[0] = '\0';
-	cap->capabilities = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OUTPUT;
-
-	return 0;
-}
-
-static int mvf_vidioc_enum_fmt_vid_out(struct file *file, void *fh,
-			struct v4l2_fmtdesc *fmt)
-{
-	if (fmt->index >= NUM_MVF_VOUT_FORMATS)
-		return -EINVAL;
-
-	strlcpy(fmt->description, mvf_formats[fmt->index].description,
-			sizeof(fmt->description));
-	fmt->pixelformat = mvf_formats[fmt->index].pixelformat;
-
-	return 0;
-}
-
-static int mvf_vidioc_g_fmt_vid_out(struct file *file, void *fh,
-			struct v4l2_format *f)
-{
-	struct mvf_vout_output *vout = fh;
-	struct v4l2_rect *rect = NULL;
-
-	f->fmt.pix.width = vout->task.input.width;
-	f->fmt.pix.height = vout->task.input.height;
-	f->fmt.pix.pixelformat = vout->task.input.format;
-	f->fmt.pix.sizeimage = vout->task.input.width * vout->task.input.height *
-			fmt_to_bpp(vout->task.input.format)/8;
-
-	if (f->fmt.pix.priv) {
-		rect = (struct v4l2_rect *)f->fmt.pix.priv;
-		rect->left = vout->task.input.crop.pos.x;
-		rect->top = vout->task.input.crop.pos.y;
-		rect->width = vout->task.input.crop.w;
-		rect->height = vout->task.input.crop.h;
-	}
-
-	return 0;
-}
 
 static inline int ipu_try_task(struct mvf_vout_output *vout)
 {
@@ -910,12 +694,181 @@ static int mvf_vout_try_format(struct mvf_vout_output *vout, struct v4l2_format 
 	return ret;
 }
 
+static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *pos)
+{
+	struct fb_info *fbi = vout->fbi;
+	mm_segment_t old_fs;
+	int ret = 0;
+
+	if (vout->disp_support_windows) {
+		old_fs = get_fs();
+		set_fs(KERNEL_DS);
+		ret = fbi->fbops->fb_ioctl(fbi, mvfFB_SET_OVERLAY_POS,
+				(unsigned long)pos);
+		set_fs(old_fs);
+	}
+
+	return ret;
+}
+
+static int config_disp_output(struct mvf_vout_output *vout)
+{
+	struct fb_info *fbi = vout->fbi;
+	struct fb_var_screeninfo var;
+	int i, display_buf_size, fb_num, ret;
+
+	memcpy(&var, &fbi->var, sizeof(var));
+
+	var.xres = vout->task.output.width;
+	var.yres = vout->task.output.height;
+	if (vout->bypass_pp) {
+		fb_num = 1;
+		/* input crop */
+		if (vout->task.input.width > vout->task.output.width)
+			var.xres_virtual = vout->task.input.width;
+		else
+			var.xres_virtual = var.xres;
+		if (vout->task.input.height > vout->task.output.height)
+			var.yres_virtual = vout->task.input.height;
+		else
+			var.yres_virtual = var.yres;
+		var.rotate = vout->task.output.rotate;
+		var.vmode |= FB_VMODE_YWRAP;
+	} else {
+		fb_num = FB_BUFS;
+		var.xres_virtual = var.xres;
+		var.yres_virtual = fb_num * var.yres;
+		var.vmode &= ~FB_VMODE_YWRAP;
+	}
+	var.bits_per_pixel = fmt_to_bpp(vout->task.output.format);
+	var.nonstd = vout->task.output.format;
+
+	v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
+			"set display fb to %d %d\n",
+			var.xres, var.yres);
+
+	ret = set_window_position(vout, &vout->win_pos);
+	if (ret < 0)
+		return ret;
+
+	/* Init display channel through fb API */
+	var.yoffset = 0;
+	var.activate |= FB_ACTIVATE_FORCE;
+	console_lock();
+	fbi->flags |= FBINFO_MISC_USEREVENT;
+	ret = fb_set_var(fbi, &var);
+	fbi->flags &= ~FBINFO_MISC_USEREVENT;
+	console_unlock();
+	if (ret < 0)
+		return ret;
+
+	display_buf_size = fbi->fix.line_length * fbi->var.yres;
+	for (i = 0; i < fb_num; i++)
+		vout->disp_bufs[i] = fbi->fix.smem_start + i * display_buf_size;
+
+	console_lock();
+	fbi->flags |= FBINFO_MISC_USEREVENT;
+	ret = fb_blank(fbi, FB_BLANK_UNBLANK);
+	fbi->flags &= ~FBINFO_MISC_USEREVENT;
+	console_unlock();
+
+	return ret;
+}
+
+static void release_disp_output(struct mvf_vout_output *vout)
+{
+	struct fb_info *fbi = vout->fbi;
+	struct mvffb_pos pos;
+#if 0
+	console_lock();
+	fbi->flags |= FBINFO_MISC_USEREVENT;
+	fb_blank(fbi, FB_BLANK_POWERDOWN);
+	fbi->flags &= ~FBINFO_MISC_USEREVENT;
+	console_unlock();
+
+	/* restore pos to 0,0 avoid fb pan display hang? */
+	pos.x = 0;
+	pos.y = 0;
+	set_window_position(vout, &pos);
+
+	/* fix if ic bypass crack smem_start */
+	if (vout->bypass_pp) {
+		console_lock();
+		fbi->fix.smem_start = vout->disp_bufs[0];
+		console_unlock();
+	}
+
+	if (get_ipu_channel(fbi) == MEM_BG_SYNC) {
+		console_lock();
+		fbi->flags |= FBINFO_MISC_USEREVENT;
+		fb_blank(fbi, FB_BLANK_UNBLANK);
+		fbi->flags &= ~FBINFO_MISC_USEREVENT;
+		console_unlock();
+	}
+#endif
+}
+#endif
+/*
+ * V4L2 ioctls
+ */
+// OK
+static int mvf_vidioc_querycap(struct file *file, void *fh,
+		struct v4l2_capability *cap)
+{
+	struct mvf_vout_output *vout = fh;
+
+	strlcpy(cap->driver, VOUT_NAME, sizeof(cap->driver));
+	strlcpy(cap->card, vout->vfd->name, sizeof(cap->card));
+	cap->bus_info[0] = '\0';
+	cap->capabilities = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OUTPUT;
+
+	return 0;
+}
+
+static int mvf_vidioc_enum_fmt_vid_out(struct file *file, void *fh,
+			struct v4l2_fmtdesc *fmt)
+{
+#if 0
+	if (fmt->index >= NUM_MVF_VOUT_FORMATS)
+		return -EINVAL;
+
+	strlcpy(fmt->description, mvf_formats[fmt->index].description,
+			sizeof(fmt->description));
+	fmt->pixelformat = mvf_formats[fmt->index].pixelformat;
+#endif
+	return 0;
+}
+
+static int mvf_vidioc_g_fmt_vid_out(struct file *file, void *fh,
+			struct v4l2_format *f)
+{
+#if 0
+	struct mvf_vout_output *vout = fh;
+	struct v4l2_rect *rect = NULL;
+
+	f->fmt.pix.width = vout->task.input.width;
+	f->fmt.pix.height = vout->task.input.height;
+	f->fmt.pix.pixelformat = vout->task.input.format;
+	f->fmt.pix.sizeimage = vout->task.input.width * vout->task.input.height *
+			fmt_to_bpp(vout->task.input.format)/8;
+
+	if (f->fmt.pix.priv) {
+		rect = (struct v4l2_rect *)f->fmt.pix.priv;
+		rect->left = vout->task.input.crop.pos.x;
+		rect->top = vout->task.input.crop.pos.y;
+		rect->width = vout->task.input.crop.w;
+		rect->height = vout->task.input.crop.h;
+	}
+#endif
+	return 0;
+}
+
 static int mvf_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 			struct v4l2_format *f)
 {
 	struct mvf_vout_output *vout = fh;
 	int ret = 0;
-
+#if 0
 	if (vout->vbq.streaming)
 		return -EBUSY;
 
@@ -924,7 +877,7 @@ static int mvf_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	if (ret >= 0)
 		vout->fmt_init = true;
 	mutex_unlock(&vout->task_lock);
-
+#endif
 	return ret;
 }
 
@@ -932,18 +885,19 @@ static int mvf_vidioc_cropcap(struct file *file, void *fh,
 		struct v4l2_cropcap *cropcap)
 {
 	struct mvf_vout_output *vout = fh;
-
+#if 0
 	if (cropcap->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
 		return -EINVAL;
 
 	cropcap->bounds = vout->crop_bounds;
 	cropcap->defrect = vout->crop_bounds;
-
+#endif
 	return 0;
 }
 
 static int mvf_vidioc_g_crop(struct file *file, void *fh, struct v4l2_crop *crop)
 {
+#if 0
 	struct mvf_vout_output *vout = fh;
 
 	if (crop->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
@@ -967,7 +921,7 @@ static int mvf_vidioc_g_crop(struct file *file, void *fh, struct v4l2_crop *crop
 			crop->c.height = vout->task.output.height;
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -976,7 +930,7 @@ static int mvf_vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *crop
 	struct mvf_vout_output *vout = fh;
 	struct v4l2_rect *b = &vout->crop_bounds;
 	int ret = 0;
-
+#if 0
 	if (crop->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
 		return -EINVAL;
 
@@ -1071,7 +1025,7 @@ static int mvf_vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *crop
 
 done:
 	mutex_unlock(&vout->task_lock);
-
+#endif
 	return ret;
 }
 
@@ -1079,7 +1033,7 @@ static int mvf_vidioc_queryctrl(struct file *file, void *fh,
 		struct v4l2_queryctrl *ctrl)
 {
 	int ret = 0;
-
+#if 0
 	switch (ctrl->id) {
 	case V4L2_CID_ROTATE:
 		ret = v4l2_ctrl_query_fill(ctrl, 0, 270, 90, 0);
@@ -1097,6 +1051,7 @@ static int mvf_vidioc_queryctrl(struct file *file, void *fh,
 		ctrl->name[0] = '\0';
 		ret = -EINVAL;
 	}
+#endif
 	return ret;
 }
 
@@ -1104,7 +1059,7 @@ static int mvf_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *c
 {
 	int ret = 0;
 	struct mvf_vout_output *vout = fh;
-
+#if 0
 	switch (ctrl->id) {
 	case V4L2_CID_ROTATE:
 		ctrl->value = vout->ctrl_rotate;
@@ -1124,11 +1079,13 @@ static int mvf_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *c
 	default:
 		ret = -EINVAL;
 	}
+#endif
 	return ret;
 }
 
 static void setup_task_rotation(struct mvf_vout_output *vout)
 {
+#if 0
 	if (vout->ctrl_rotate == 0) {
 		if (vout->ctrl_vflip && vout->ctrl_hflip)
 			vout->task.output.rotate = IPU_ROTATE_180;
@@ -1166,13 +1123,14 @@ static void setup_task_rotation(struct mvf_vout_output *vout)
 		else
 			vout->task.output.rotate = IPU_ROTATE_90_LEFT;
 	}
+#endif
 }
 
 static int mvf_vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
 {
 	int ret = 0;
 	struct mvf_vout_output *vout = fh;
-
+#if 0
 	/* wait current work finish */
 	if (vout->vbq.streaming)
 		cancel_work_sync(&vout->disp_work);
@@ -1231,10 +1189,11 @@ static int mvf_vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *c
 
 done:
 	mutex_unlock(&vout->task_lock);
-
+#endif
 	return ret;
 }
 
+//OK
 static int mvf_vidioc_reqbufs(struct file *file, void *fh,
 			struct v4l2_requestbuffers *req)
 {
@@ -1254,6 +1213,7 @@ static int mvf_vidioc_reqbufs(struct file *file, void *fh,
 	return ret;
 }
 
+//OK
 static int mvf_vidioc_querybuf(struct file *file, void *fh,
 			struct v4l2_buffer *b)
 {
@@ -1271,6 +1231,7 @@ static int mvf_vidioc_querybuf(struct file *file, void *fh,
 	return ret;
 }
 
+//OK
 static int mvf_vidioc_qbuf(struct file *file, void *fh,
 			struct v4l2_buffer *buffer)
 {
@@ -1279,6 +1240,7 @@ static int mvf_vidioc_qbuf(struct file *file, void *fh,
 	return videobuf_qbuf(&vout->vbq, buffer);
 }
 
+//OK
 static int mvf_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 {
 	struct mvf_vout_output *vout = fh;
@@ -1292,125 +1254,12 @@ static int mvf_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 		return videobuf_dqbuf(&vout->vbq, (struct v4l2_buffer *)b, 0);
 }
 
-static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *pos)
-{
-	struct fb_info *fbi = vout->fbi;
-	mm_segment_t old_fs;
-	int ret = 0;
-
-	if (vout->disp_support_windows) {
-		old_fs = get_fs();
-		set_fs(KERNEL_DS);
-		ret = fbi->fbops->fb_ioctl(fbi, mvfFB_SET_OVERLAY_POS,
-				(unsigned long)pos);
-		set_fs(old_fs);
-	}
-
-	return ret;
-}
-
-static int config_disp_output(struct mvf_vout_output *vout)
-{
-	struct fb_info *fbi = vout->fbi;
-	struct fb_var_screeninfo var;
-	int i, display_buf_size, fb_num, ret;
-
-	memcpy(&var, &fbi->var, sizeof(var));
-
-	var.xres = vout->task.output.width;
-	var.yres = vout->task.output.height;
-	if (vout->bypass_pp) {
-		fb_num = 1;
-		/* input crop */
-		if (vout->task.input.width > vout->task.output.width)
-			var.xres_virtual = vout->task.input.width;
-		else
-			var.xres_virtual = var.xres;
-		if (vout->task.input.height > vout->task.output.height)
-			var.yres_virtual = vout->task.input.height;
-		else
-			var.yres_virtual = var.yres;
-		var.rotate = vout->task.output.rotate;
-		var.vmode |= FB_VMODE_YWRAP;
-	} else {
-		fb_num = FB_BUFS;
-		var.xres_virtual = var.xres;
-		var.yres_virtual = fb_num * var.yres;
-		var.vmode &= ~FB_VMODE_YWRAP;
-	}
-	var.bits_per_pixel = fmt_to_bpp(vout->task.output.format);
-	var.nonstd = vout->task.output.format;
-
-	v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
-			"set display fb to %d %d\n",
-			var.xres, var.yres);
-
-	ret = set_window_position(vout, &vout->win_pos);
-	if (ret < 0)
-		return ret;
-
-	/* Init display channel through fb API */
-	var.yoffset = 0;
-	var.activate |= FB_ACTIVATE_FORCE;
-	console_lock();
-	fbi->flags |= FBINFO_MISC_USEREVENT;
-	ret = fb_set_var(fbi, &var);
-	fbi->flags &= ~FBINFO_MISC_USEREVENT;
-	console_unlock();
-	if (ret < 0)
-		return ret;
-
-	display_buf_size = fbi->fix.line_length * fbi->var.yres;
-	for (i = 0; i < fb_num; i++)
-		vout->disp_bufs[i] = fbi->fix.smem_start + i * display_buf_size;
-
-	console_lock();
-	fbi->flags |= FBINFO_MISC_USEREVENT;
-	ret = fb_blank(fbi, FB_BLANK_UNBLANK);
-	fbi->flags &= ~FBINFO_MISC_USEREVENT;
-	console_unlock();
-
-	return ret;
-}
-
-static void release_disp_output(struct mvf_vout_output *vout)
-{
-	struct fb_info *fbi = vout->fbi;
-	struct mvffb_pos pos;
-
-	console_lock();
-	fbi->flags |= FBINFO_MISC_USEREVENT;
-	fb_blank(fbi, FB_BLANK_POWERDOWN);
-	fbi->flags &= ~FBINFO_MISC_USEREVENT;
-	console_unlock();
-
-	/* restore pos to 0,0 avoid fb pan display hang? */
-	pos.x = 0;
-	pos.y = 0;
-	set_window_position(vout, &pos);
-
-	/* fix if ic bypass crack smem_start */
-	if (vout->bypass_pp) {
-		console_lock();
-		fbi->fix.smem_start = vout->disp_bufs[0];
-		console_unlock();
-	}
-
-	if (get_ipu_channel(fbi) == MEM_BG_SYNC) {
-		console_lock();
-		fbi->flags |= FBINFO_MISC_USEREVENT;
-		fb_blank(fbi, FB_BLANK_UNBLANK);
-		fbi->flags &= ~FBINFO_MISC_USEREVENT;
-		console_unlock();
-	}
-}
-
 static int mvf_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 {
 	struct mvf_vout_output *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	int ret;
-
+#if 0
 	if (q->streaming) {
 		v4l2_err(vout->vfd->v4l2_dev,
 				"video output already run\n");
@@ -1442,18 +1291,18 @@ static int mvf_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i
 	vout->pre_vb = NULL;
 
 	ret = videobuf_streamon(q);
+#endif
 done:
 	return ret;
 }
 
 
-//OK
 static int mvf_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 {
 	struct mvf_vout_output *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
-
+#if 0
 	if (q->streaming) {
 		cancel_work_sync(&vout->disp_work);
 		flush_workqueue(vout->v4l_wq);
@@ -1466,11 +1315,196 @@ static int mvf_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type 
 	}
 	INIT_LIST_HEAD(&vout->queue_list);
 	INIT_LIST_HEAD(&vout->active_list);
+#endif
+	return ret;
+}
+
+
+/**
+ *  V4L2 Video buffer call backs
+ */
+
+/*
+ * Buffer setup function is called by videobuf layer when REQBUF ioctl is
+ * called. This is used to setup buffers and return size and count of
+ * buffers allocated. After the call to this buffer, videobuf layer will
+ * setup buffer queue depending on the size and count of buffers
+ */
+//FIXME
+static int mvf_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
+			  unsigned int *size)
+{
+	struct mvf_vout_output *vout = q->priv_data;
+
+	if (!vout)
+		return -EINVAL;
+
+	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != q->type)
+		return -EINVAL;
+//FIXME
+#if 0
+	*size = PAGE_ALIGN(vout->task.input.width * vout->task.input.height *
+			fmt_to_bpp(vout->task.input.format)/8);
+#endif
+
+	return 0;
+}
+
+/*
+ * This function will be called when VIDIOC_QBUF ioctl is called.
+ * It prepare buffers before give out for the display. This function
+ * converts user space virtual address into physical address if userptr memory
+ * exchange mechanism is used.
+ */
+//OK
+static int mvf_vout_buffer_prepare(struct videobuf_queue *q,
+			    struct videobuf_buffer *vb,
+			    enum v4l2_field field)
+{
+	vb->state = VIDEOBUF_PREPARED;
+	return 0;
+}
+
+/*
+ * Buffer queue funtion will be called from the videobuf layer when _QBUF
+ * ioctl is called. It is used to enqueue buffer, which is ready to be
+ * displayed.
+ * This function is protected by q->irqlock.
+ */
+//FIXME
+static void mvf_vout_buffer_queue(struct videobuf_queue *q,
+			  struct videobuf_buffer *vb)
+{
+	struct mvf_vout_output *vout = q->priv_data;
+#if 0
+	list_add_tail(&vb->queue, &vout->queue_list);
+	vb->state = VIDEOBUF_QUEUED;
+
+	if (vout->timer_stop) {
+		if (deinterlace_3_field(vout) &&
+			list_empty(&vout->active_list)) {
+			vb = list_first_entry(&vout->queue_list,
+					struct videobuf_buffer, queue);
+			list_del(&vb->queue);
+			list_add_tail(&vb->queue, &vout->active_list);
+		} else {
+			setup_buf_timer(vout, vb);
+			vout->timer_stop = false;
+		}
+	}
+#endif
+}
+
+/*
+ * Buffer release function is called from videobuf layer to release buffer
+ * which are already allocated
+ */
+//OK
+static void mvf_vout_buffer_release(struct videobuf_queue *q,
+			    struct videobuf_buffer *vb)
+{
+	vb->state = VIDEOBUF_NEEDS_INIT;
+}
+
+
+/**
+ * V4L2 file operations
+ */
+//OK
+static int mvf_vout_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	int ret;
+	struct mvf_vout_output *vout = file->private_data;
+
+	if (!vout)
+		return -ENODEV;
+
+	ret = videobuf_mmap_mapper(&vout->vbq, vma);
+	if (ret < 0)
+		v4l2_err(vout->vfd->v4l2_dev,
+				"offset invalid [offset=0x%lx]\n",
+				(vma->vm_pgoff << PAGE_SHIFT));
+
+	return ret;
+}
+//FIXME
+static int mvf_vout_release(struct file *file)
+{
+	unsigned int ret = 0;
+	struct videobuf_queue *q;
+	struct mvf_vout_output *vout = file->private_data;
+
+	if (!vout)
+		return 0;
+
+	if (--vout->open_cnt == 0) {
+		q = &vout->vbq;
+		if (q->streaming)
+			mvf_vidioc_streamoff(file, vout, vout->type);
+		else {
+//FIXME
+#if 0
+			release_disp_output(vout);
+#endif
+			videobuf_queue_cancel(q);
+		}
+		destroy_workqueue(vout->v4l_wq);
+		ret = videobuf_mmap_free(q);
+	}
 
 	return ret;
 }
 
-//OK
+//FIXME
+static int mvf_vout_open(struct file *file)
+{
+	struct mvf_vout_output *vout = NULL;
+	int ret = 0;
+
+	vout = video_drvdata(file);
+
+	if (vout == NULL)
+		return -ENODEV;
+
+	if (vout->open_cnt++ == 0) {
+		vout->ctrl_rotate = 0;
+		vout->ctrl_vflip = 0;
+		vout->ctrl_hflip = 0;
+#if 0
+		update_display_setting();
+		ret = update_setting_from_fbi(vout, vout->fbi);
+#endif
+		if (ret < 0)
+			goto err;
+
+		vout->v4l_wq = create_singlethread_workqueue("v4l2q");
+		if (!vout->v4l_wq) {
+			v4l2_err(vout->vfd->v4l2_dev,
+					"Could not create work queue\n");
+			ret = -ENOMEM;
+			goto err;
+		}
+#if 0
+		INIT_WORK(&vout->disp_work, disp_work_func);
+#endif
+		INIT_LIST_HEAD(&vout->queue_list);
+		INIT_LIST_HEAD(&vout->active_list);
+
+		vout->fmt_init = false;
+		vout->frame_count = 0;
+#if 0
+		vout->win_pos.x = 0;
+		vout->win_pos.y = 0;
+#endif
+	}
+
+	file->private_data = vout;
+
+err:
+	return ret;
+}
+
+
 static const struct v4l2_ioctl_ops mvf_vout_ioctl_ops = {
 	.vidioc_querycap      			= mvf_vidioc_querycap,
 	.vidioc_enum_fmt_vid_out 		= mvf_vidioc_enum_fmt_vid_out,
@@ -1497,7 +1531,7 @@ static const struct v4l2_file_operations mvf_vout_fops = {
 	.open 		= mvf_vout_open,
 	.release 	= mvf_vout_release,
 };
-//OK
+
 static struct video_device mvf_vout_template = {
 	.name 		= "MVF Video Output",
 	.fops           = &mvf_vout_fops,
@@ -1511,8 +1545,8 @@ static struct videobuf_queue_ops mvf_vout_vbq_ops = {
 	.buf_release = mvf_vout_buffer_release,
 	.buf_queue = mvf_vout_buffer_queue,
 };
-#endif
-//FIXME?
+
+//OK
 static void mvf_vout_free_output(struct mvf_vout_dev *dev)
 {
 	int i;
@@ -1531,7 +1565,7 @@ static void mvf_vout_free_output(struct mvf_vout_dev *dev)
 		kfree(vout);
 	}
 }
-#if 0
+
 //FIXME
 static int __init mvf_vout_setup_output(struct mvf_vout_dev *dev)
 {
@@ -1597,7 +1631,7 @@ static int __init mvf_vout_setup_output(struct mvf_vout_dev *dev)
 
 	return ret;
 }
-#endif
+
 //OK
 static int mvf_vout_probe(struct platform_device *pdev)
 {
