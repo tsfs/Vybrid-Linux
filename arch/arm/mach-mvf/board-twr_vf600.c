@@ -417,6 +417,8 @@ static void __init twr_vf600_init(void)
 	mvf_add_dcuv4_fb(0, &mvf_fb_data[0]);
 	printk("TWR_VF600: Adding lcdif\n");
 	mvf_add_lcdif(&lcdif_data);
+	printk("TWR_VF600: Adding v4l2 output\n");
+	mvf_add_v4l2_output(0);
 
 	platform_device_register(&edma_device);
 	platform_device_register(&pit_device);

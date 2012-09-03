@@ -1,0 +1,6 @@
+config VIDEO_MVF_DCU_OUTPUT
+	bool "DCU v4l2 support"
+	depends on VIDEO_MVF_OUTPUT && MVF_DCU
+	default y
+	---help---
+	  This is the video4linux2 driver for DCU video output.
