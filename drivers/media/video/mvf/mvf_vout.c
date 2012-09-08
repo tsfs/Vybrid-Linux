@@ -193,10 +193,6 @@ static void setup_buf_timer(struct mvf_vout_output *vout,
 
 
 #if 0
-static int mvf_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i);
-static int config_disp_output(struct mvf_vout_output *vout);
-static void release_disp_output(struct mvf_vout_output *vout);
-
 static ipu_channel_t get_ipu_channel(struct fb_info *fbi)
 {
 	ipu_channel_t ipu_ch = CHAN_NONE;
@@ -205,7 +201,7 @@ static ipu_channel_t get_ipu_channel(struct fb_info *fbi)
 	if (fbi->fbops->fb_ioctl) {
 		old_fs = get_fs();
 		set_fs(KERNEL_DS);
-		fbi->fbops->fb_ioctl(fbi, mvfFB_GET_FB_IPU_CHAN,
+		fbi->fbops->fb_ioctl(fbi, MVFFB_GET_FB_IPU_CHAN,
 				(unsigned long)&ipu_ch);
 		set_fs(old_fs);
 	}
@@ -221,7 +217,7 @@ static unsigned int get_ipu_fmt(struct fb_info *fbi)
 	if (fbi->fbops->fb_ioctl) {
 		old_fs = get_fs();
 		set_fs(KERNEL_DS);
-		fbi->fbops->fb_ioctl(fbi, mvfFB_GET_DIFMT,
+		fbi->fbops->fb_ioctl(fbi, MVFFB_GET_DIFMT,
 				(unsigned long)&fb_fmt);
 		set_fs(old_fs);
 	}
@@ -259,14 +255,16 @@ static bool is_pp_bypass(struct mvf_vout_output *vout)
 static int show_buf(struct mvf_vout_output *vout, int idx,
 	struct ipu_pos *ipos)
 {
-#if 0
+
 	struct fb_info *fbi = vout->fbi;
 	struct fb_var_screeninfo var;
 	int ret;
 
 	memcpy(&var, &fbi->var, sizeof(var));
 
+#if 0
 	if (vout->bypass_pp) {
+#endif
 		/*
 		 * crack fb base
 		 * NOTE: should not do other fb operation during v4l2
@@ -278,20 +276,21 @@ static int show_buf(struct mvf_vout_output *vout, int idx,
 		var.yoffset = ipos->y;
 		ret = fb_pan_display(fbi, &var);
 		console_unlock();
+#if 0
 	} else {
 		var.yoffset = idx * fbi->var.yres;
 		console_lock();
 		ret = fb_pan_display(fbi, &var);
 		console_unlock();
 	}
-
-	return ret;
 #endif
+	return ret;
+
 }
 
 static void mvf_vout_timer_handler(unsigned long arg)
 {
-#if 0
+
 	struct mvf_vout_output *vout =
 			(struct mvf_vout_output *) arg;
 	struct videobuf_queue *q = &vout->vbq;
@@ -327,13 +326,12 @@ static void mvf_vout_timer_handler(unsigned long arg)
 	vb->state = VIDEOBUF_ACTIVE;
 
 	spin_unlock_irqrestore(q->irqlock, flags);
-#endif
 }
 
-
+#if 0
 static inline int ipu_try_task(struct mvf_vout_output *vout)
 {
-#if 0
+
 	int ret;
 	struct ipu_task *task = &vout->task;
 
@@ -371,22 +369,27 @@ again:
 		ret = 0;
 
 	return ret;
-#endif
+
 }
+#endif
 
 static int mvf_vout_try_task(struct mvf_vout_output *vout)
 {
-#if 0
+
 	int ret = 0;
 
 	vout->task.input.crop.w -= vout->task.input.crop.w%8;
 	vout->task.input.crop.h -= vout->task.input.crop.h%8;
 
 	/* assume task.output already set by S_CROP */
-	if (is_pp_bypass(vout)) {
+#if 0
+	if (is_pp_bypass(vout))
+	{
+#endif
 		v4l2_info(vout->vfd->v4l2_dev, "Bypass IC.\n");
 		vout->bypass_pp = true;
 		vout->task.output.format = vout->task.input.format;
+#if 0
 	} else {
 		/* if need CSC, choose IPU-DP or IPU_IC do it */
 		vout->bypass_pp = false;
@@ -403,9 +406,9 @@ static int mvf_vout_try_task(struct mvf_vout_output *vout)
 		}
 		ret = ipu_try_task(vout);
 	}
-
-	return ret;
 #endif
+	return ret;
+
 }
 
 //FIXME
@@ -472,7 +475,7 @@ static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *p
 	if (vout->disp_support_windows) {
 		old_fs = get_fs();
 		set_fs(KERNEL_DS);
-		ret = fbi->fbops->fb_ioctl(fbi, mvfFB_SET_OVERLAY_POS,
+		ret = fbi->fbops->fb_ioctl(fbi, MVFFB_SET_OVERLAY_POS,
 				(unsigned long)pos);
 		set_fs(old_fs);
 	}
@@ -483,7 +486,7 @@ static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *p
 
 static int config_disp_output(struct mvf_vout_output *vout)
 {
-#if 0
+
 	struct fb_info *fbi = vout->fbi;
 	struct fb_var_screeninfo var;
 	int i, display_buf_size, fb_num, ret;
@@ -492,7 +495,9 @@ static int config_disp_output(struct mvf_vout_output *vout)
 
 	var.xres = vout->task.output.width;
 	var.yres = vout->task.output.height;
+#if 0
 	if (vout->bypass_pp) {
+#endif
 		fb_num = 1;
 		/* input crop */
 		if (vout->task.input.width > vout->task.output.width)
@@ -505,23 +510,25 @@ static int config_disp_output(struct mvf_vout_output *vout)
 			var.yres_virtual = var.yres;
 		var.rotate = vout->task.output.rotate;
 		var.vmode |= FB_VMODE_YWRAP;
+#if 0
 	} else {
 		fb_num = FB_BUFS;
 		var.xres_virtual = var.xres;
 		var.yres_virtual = fb_num * var.yres;
 		var.vmode &= ~FB_VMODE_YWRAP;
 	}
+#endif
 	var.bits_per_pixel = fmt_to_bpp(vout->task.output.format);
 	var.nonstd = vout->task.output.format;
 
 	v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
 			"set display fb to %d %d\n",
 			var.xres, var.yres);
-
+#if 0
 	ret = set_window_position(vout, &vout->win_pos);
 	if (ret < 0)
 		return ret;
-
+#endif
 	/* Init display channel through fb API */
 	var.yoffset = 0;
 	var.activate |= FB_ACTIVATE_FORCE;
@@ -544,15 +551,14 @@ static int config_disp_output(struct mvf_vout_output *vout)
 	console_unlock();
 
 	return ret;
-#endif
 }
 
 //FIXME
 static void release_disp_output(struct mvf_vout_output *vout)
 {
-#if 0
+
 	struct fb_info *fbi = vout->fbi;
-	struct mvffb_pos pos;
+	//struct mvffb_pos pos;
 
 	console_lock();
 	fbi->flags |= FBINFO_MISC_USEREVENT;
@@ -560,18 +566,22 @@ static void release_disp_output(struct mvf_vout_output *vout)
 	fbi->flags &= ~FBINFO_MISC_USEREVENT;
 	console_unlock();
 
+#if 0
 	/* restore pos to 0,0 avoid fb pan display hang? */
 	pos.x = 0;
 	pos.y = 0;
 	set_window_position(vout, &pos);
-
+#endif
 	/* fix if ic bypass crack smem_start */
-	if (vout->bypass_pp) {
+#if 0
+	if (vout->bypass_pp)
+#endif
+	{
 		console_lock();
 		fbi->fix.smem_start = vout->disp_bufs[0];
 		console_unlock();
 	}
-
+#if 0
 	if (get_ipu_channel(fbi) == MEM_BG_SYNC) {
 		console_lock();
 		fbi->flags |= FBINFO_MISC_USEREVENT;
@@ -587,7 +597,7 @@ static void release_disp_output(struct mvf_vout_output *vout)
 static void disp_work_func(struct work_struct *work)
 {
 	printk("V4L2 driver in disp_work_func\n");
-#if 0
+
 	struct mvf_vout_output *vout =
 		container_of(work, struct mvf_vout_output, disp_work);
 	struct videobuf_queue *q = &vout->vbq;
@@ -618,11 +628,13 @@ static void disp_work_func(struct work_struct *work)
 		vout->task.input.paddr = vb->baddr;
 	else
 		vout->task.input.paddr = videobuf_to_dma_contig(vb);
-
+#if 0
 	if (vout->bypass_pp) {
+#endif
 		vout->task.output.paddr = vout->task.input.paddr;
 		ipos.x = vout->task.input.crop.pos.x;
 		ipos.y = vout->task.input.crop.pos.y;
+#if 0
 	} else {
 		vout->task.output.paddr =
 			vout->disp_bufs[vout->frame_count % FB_BUFS];
@@ -632,7 +644,7 @@ static void disp_work_func(struct work_struct *work)
 			goto err;
 		}
 	}
-
+#endif
 	mutex_unlock(&vout->task_lock);
 
 	ret = show_buf(vout, vout->frame_count % FB_BUFS, &ipos);
@@ -654,14 +666,17 @@ static void disp_work_func(struct work_struct *work)
 		vout->pre_vb->state = VIDEOBUF_DONE;
 		wake_up_interruptible(&vout->pre_vb->done);
 	}
-
+#if 0
 	if (vout->bypass_pp)
+#endif
 		vout->pre_vb = vb;
+#if 0
 	else {
 		vout->pre_vb = NULL;
 		vb->state = VIDEOBUF_DONE;
 		wake_up_interruptible(&vb->done);
 	}
+#endif
 
 	vout->frame_count++;
 
@@ -684,7 +699,7 @@ err:
 	vout->timer_stop = true;
 	vb->state = VIDEOBUF_ERROR;
 	return;
-#endif
+
 }
 
 /* called after g_fb_setting filled by update_display_setting */
