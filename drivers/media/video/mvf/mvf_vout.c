@@ -136,9 +136,6 @@ const static struct v4l2_fmtdesc mvf_formats[] = {
 
 #define NUM_MVF_VOUT_FORMATS (ARRAY_SIZE(mvf_formats))
 
-#define DEF_INPUT_WIDTH		320
-#define DEF_INPUT_HEIGHT	240
-
 static struct mvf_vout_fb g_fb_setting[MAX_FB_NUM];
 
 static inline unsigned long get_jiffies(struct timeval *t)
@@ -721,15 +718,14 @@ static int update_setting_from_fbi(struct mvf_vout_output *vout,
 
 	memset(&vout->task, 0, sizeof(struct ipu_task));
 
-	/*	FIXME: Why do we need input height/width??
-	 * 	Get away from IPU task format and see what makes sense for DCU
+	/*	FIXME: 	Get away from IPU task format and see what makes sense for DCU?
 	 */
-	vout->task.input.width = DEF_INPUT_WIDTH;
-	vout->task.input.height = DEF_INPUT_HEIGHT;
+	vout->task.input.width = vout->crop_bounds.width;
+	vout->task.input.height = vout->crop_bounds.height;
 	vout->task.input.crop.pos.x = 0;
 	vout->task.input.crop.pos.y = 0;
-	vout->task.input.crop.w = DEF_INPUT_WIDTH;
-	vout->task.input.crop.h = DEF_INPUT_HEIGHT;
+	vout->task.input.crop.w = vout->crop_bounds.width;
+	vout->task.input.crop.h = vout->crop_bounds.height;
 
 	vout->task.output.width = vout->crop_bounds.width;
 	vout->task.output.height = vout->crop_bounds.height;
@@ -826,13 +822,13 @@ static int mvf_vidioc_g_fmt_vid_out(struct file *file, void *fh,
 	}
 	return 0;
 }
-
+//OK
 static int mvf_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 			struct v4l2_format *f)
 {
 	struct mvf_vout_output *vout = fh;
 	int ret = 0;
-#if 0
+
 	if (vout->vbq.streaming)
 		return -EBUSY;
 
@@ -841,21 +837,21 @@ static int mvf_vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	if (ret >= 0)
 		vout->fmt_init = true;
 	mutex_unlock(&vout->task_lock);
-#endif
+
 	return ret;
 }
-
+//OK
 static int mvf_vidioc_cropcap(struct file *file, void *fh,
 		struct v4l2_cropcap *cropcap)
 {
 	struct mvf_vout_output *vout = fh;
-#if 0
+
 	if (cropcap->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
 		return -EINVAL;
 
 	cropcap->bounds = vout->crop_bounds;
 	cropcap->defrect = vout->crop_bounds;
-#endif
+
 	return 0;
 }
 
