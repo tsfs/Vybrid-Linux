@@ -449,9 +449,9 @@ static int mvf_vout_try_format(struct mvf_vout_output *vout, struct v4l2_format 
 		vout->task.input.crop.w = f->fmt.pix.width;
 		vout->task.input.crop.h = f->fmt.pix.height;
 	}
-#if 0
+
 	ret = mvf_vout_try_task(vout);
-#endif
+
 	if (!ret) {
 		if (rect) {
 			rect->width = vout->task.input.crop.w;
@@ -464,13 +464,12 @@ static int mvf_vout_try_format(struct mvf_vout_output *vout, struct v4l2_format 
 
 	return ret;
 }
-
+#if 0
 static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *pos)
 {
-#if 0
+	int ret = 0;
 	struct fb_info *fbi = vout->fbi;
 	mm_segment_t old_fs;
-	int ret = 0;
 
 	if (vout->disp_support_windows) {
 		old_fs = get_fs();
@@ -479,10 +478,9 @@ static int set_window_position(struct mvf_vout_output *vout, struct mvffb_pos *p
 				(unsigned long)pos);
 		set_fs(old_fs);
 	}
-
 	return ret;
-#endif
 }
+#endif
 
 static int config_disp_output(struct mvf_vout_output *vout)
 {
@@ -518,7 +516,13 @@ static int config_disp_output(struct mvf_vout_output *vout)
 		var.vmode &= ~FB_VMODE_YWRAP;
 	}
 #endif
+
+#if 0
 	var.bits_per_pixel = fmt_to_bpp(vout->task.output.format);
+#else
+	var.bits_per_pixel = 24 / 8;
+#endif
+
 	var.nonstd = vout->task.output.format;
 
 	v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
@@ -596,12 +600,10 @@ static void release_disp_output(struct mvf_vout_output *vout)
 //FIXME
 static void disp_work_func(struct work_struct *work)
 {
-	printk("V4L2 driver in disp_work_func\n");
-
 	struct mvf_vout_output *vout =
 		container_of(work, struct mvf_vout_output, disp_work);
 	struct videobuf_queue *q = &vout->vbq;
-	struct videobuf_buffer *vb, *vb_next = NULL;
+	struct videobuf_buffer *vb;
 	unsigned long flags = 0;
 	struct ipu_pos ipos;
 	int ret = 0;
@@ -694,12 +696,13 @@ static void disp_work_func(struct work_struct *work)
 	v4l2_dbg(1, debug, vout->vfd->v4l2_dev, "disp work finish one frame\n");
 
 	return;
+#if 0
 err:
 	v4l2_err(vout->vfd->v4l2_dev, "display work fail ret = %d\n", ret);
 	vout->timer_stop = true;
 	vb->state = VIDEOBUF_ERROR;
 	return;
-
+#endif
 }
 
 /* called after g_fb_setting filled by update_display_setting */
@@ -870,6 +873,7 @@ static int mvf_vidioc_cropcap(struct file *file, void *fh,
 	return 0;
 }
 
+//Dont care for now
 static int mvf_vidioc_g_crop(struct file *file, void *fh, struct v4l2_crop *crop)
 {
 #if 0
@@ -900,12 +904,14 @@ static int mvf_vidioc_g_crop(struct file *file, void *fh, struct v4l2_crop *crop
 	return 0;
 }
 
+//Dont care for now
 static int mvf_vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *crop)
 {
-	struct mvf_vout_output *vout = fh;
-	struct v4l2_rect *b = &vout->crop_bounds;
 	int ret = 0;
 #if 0
+	struct mvf_vout_output *vout = fh;
+	struct v4l2_rect *b = &vout->crop_bounds;
+
 	if (crop->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
 		return -EINVAL;
 
@@ -1004,6 +1010,7 @@ done:
 	return ret;
 }
 
+//Dont care for now
 static int mvf_vidioc_queryctrl(struct file *file, void *fh,
 		struct v4l2_queryctrl *ctrl)
 {
@@ -1030,11 +1037,13 @@ static int mvf_vidioc_queryctrl(struct file *file, void *fh,
 	return ret;
 }
 
+//Dont care for now
 static int mvf_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
 {
 	int ret = 0;
-	struct mvf_vout_output *vout = fh;
 #if 0
+	struct mvf_vout_output *vout = fh;
+
 	switch (ctrl->id) {
 	case V4L2_CID_ROTATE:
 		ctrl->value = vout->ctrl_rotate;
@@ -1052,9 +1061,11 @@ static int mvf_vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *c
 	return ret;
 }
 
+//Dont care for now
+#if 0
 static void setup_task_rotation(struct mvf_vout_output *vout)
 {
-#if 0
+
 	if (vout->ctrl_rotate == 0) {
 		if (vout->ctrl_vflip && vout->ctrl_hflip)
 			vout->task.output.rotate = IPU_ROTATE_180;
@@ -1092,14 +1103,16 @@ static void setup_task_rotation(struct mvf_vout_output *vout)
 		else
 			vout->task.output.rotate = IPU_ROTATE_90_LEFT;
 	}
-#endif
 }
+#endif
 
+//Dont care for now
 static int mvf_vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
 {
 	int ret = 0;
-	struct mvf_vout_output *vout = fh;
 #if 0
+	struct mvf_vout_output *vout = fh;
+
 	/* wait current work finish */
 	if (vout->vbq.streaming)
 		cancel_work_sync(&vout->disp_work);
@@ -1218,12 +1231,13 @@ static int mvf_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 		return videobuf_dqbuf(&vout->vbq, (struct v4l2_buffer *)b, 0);
 }
 
+//OK
 static int mvf_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 {
 	struct mvf_vout_output *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	int ret;
-#if 0
+
 	if (q->streaming) {
 		v4l2_err(vout->vfd->v4l2_dev,
 				"video output already run\n");
@@ -1248,18 +1262,18 @@ static int mvf_vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i
 	vout->pre_vb = NULL;
 
 	ret = videobuf_streamon(q);
-#endif
+
 done:
 	return ret;
 }
 
-
+//OK
 static int mvf_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 {
 	struct mvf_vout_output *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
-#if 0
+
 	if (q->streaming) {
 		cancel_work_sync(&vout->disp_work);
 		flush_workqueue(vout->v4l_wq);
@@ -1272,7 +1286,7 @@ static int mvf_vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type 
 	}
 	INIT_LIST_HEAD(&vout->queue_list);
 	INIT_LIST_HEAD(&vout->active_list);
-#endif
+
 	return ret;
 }
 
@@ -1479,7 +1493,7 @@ static const struct v4l2_file_operations mvf_vout_fops = {
 	.open 			= mvf_vout_open,
 	.release	 	= mvf_vout_release,
 };
-
+//OK
 static struct video_device mvf_vout_template = {
 	.name 		= "MVF Video Output",
 	.fops       = &mvf_vout_fops,
